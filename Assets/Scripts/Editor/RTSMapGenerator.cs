@@ -17,7 +17,7 @@ public static class RTSMapGenerator
     const string TemplateScene = "Assets/Scenes/SampleScene.unity";
 
     const int W = 288;
-    const int H = 216;
+    const int H = MapSorting.MapHeight; // çizim sırası formülü harita yüksekliğine bağlı
     const int WaterPadding = 40;
     const float S = W / 256f; // gürültü ölçeği: harita büyüdükçe kıta/biyom/orman da büyüsün
 
@@ -47,6 +47,7 @@ public static class RTSMapGenerator
     };
 
     static System.Random rng;
+    static Tilemap groundBase;
     static bool[,] land, occupied, treeAt;
     static int[,] waterDist, biome;
     static Dictionary<Vector2Int, TileBase>[] tiles;
@@ -84,12 +85,14 @@ public static class RTSMapGenerator
             EditorUtility.DisplayProgressBar("RTS Harita", "Doğa yerleştiriliyor...", 0.6f);
             occupied = new bool[W, H];
             treeAt = new bool[W, H];
+            var pawn = PlacePawn();
             var objects = new GameObject("Nature").transform;
             PlaceForests(objects);
             PlaceResources(objects);
             PlaceScatter(objects);
             PlaceWaterRocks(objects);
-            SetupCamera();
+            SetupCamera(pawn.transform.position);
+            new GameObject("Selection Manager").AddComponent<SelectionManager>().walkableGround = groundBase;
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -451,8 +454,8 @@ public static class RTSMapGenerator
         foam.SetTiles(foamCells.ToArray(), Enumerable.Repeat(foamTile, foamCells.Count).ToArray());
 
         // Taban katman: tüm kara, ilk biyomun tile'larıyla, kıyıya göre
-        var baseLayer = MakeTilemap(grid, "Ground - " + Biomes[0].name, -18);
-        FillLayer(baseLayer, Biomes[0].tileset, (x, y) => Land(x, y));
+        groundBase = MakeTilemap(grid, "Ground - " + Biomes[0].name, -18);
+        FillLayer(groundBase, Biomes[0].tileset, (x, y) => Land(x, y));
 
         // Diğer biyomlar ayrı katmanlarda tabanın üstüne biner; kenarlarındaki yuvarlak
         // çerçeve sayesinde biyom sınırı alttaki zeminin üzerinde doğal bir geçiş gibi görünür.
@@ -488,6 +491,64 @@ public static class RTSMapGenerator
     }
 
     // ---------------------------------------------------------------- Doğa
+
+    // ---------------------------------------------------------------- Birimler
+
+    const string PawnFolder = TS + "Pawn and Resources/Pawn/Blue Pawn/";
+
+    /// <summary>Harita ortasına en yakın açık kara alanına bir mavi Pawn koyar ve çevresini boş bırakır.</summary>
+    static GameObject PlacePawn()
+    {
+        var spot = new Vector2Int(W / 2, H / 2);
+        for (int r = 0; r < Mathf.Max(W, H); r++)
+        {
+            bool found = false;
+            for (int dx = -r; dx <= r && !found; dx++)
+            for (int dy = -r; dy <= r && !found; dy++)
+            {
+                int x = W / 2 + dx, y = H / 2 + dy;
+                if (Land(x, y) && waterDist[x, y] >= 8) { spot = new Vector2Int(x, y); found = true; }
+            }
+            if (found) break;
+        }
+
+        // Etrafına ağaç/çalı gelmesin
+        const int clear = 4;
+        for (int x = spot.x - clear; x <= spot.x + clear; x++)
+        for (int y = spot.y - clear; y <= spot.y + clear; y++)
+            if (In(x, y)) occupied[x, y] = true;
+
+        var root = new GameObject("Units").transform;
+        return CreatePawn(root, new Vector2(spot.x + 0.5f, spot.y + 0.5f));
+    }
+
+    static GameObject CreatePawn(Transform parent, Vector2 feet)
+    {
+        var idle = Frames(PawnFolder + "Pawn_Idle.png");
+        var run = Frames(PawnFolder + "Pawn_Run.png");
+
+        var go = new GameObject("Pawn");
+        go.transform.SetParent(parent);
+        go.transform.position = feet;
+
+        // Pawn karesi 192x192 (3x3 birim); ayaklar karenin altından ~1 birim yukarıda
+        var visual = new GameObject("Visual");
+        visual.transform.SetParent(go.transform, false);
+        visual.transform.localPosition = new Vector3(0f, 0.5f, 0f);
+        var sr = visual.AddComponent<SpriteRenderer>();
+        sr.sprite = idle.Length > 0 ? idle[0] : null;
+        sr.sortingOrder = MapSorting.Order(feet.x, feet.y);
+
+        var col = go.AddComponent<BoxCollider2D>();
+        col.offset = new Vector2(0f, 0.5f);
+        col.size = new Vector2(0.7f, 1f);
+
+        var unit = go.AddComponent<Unit>();
+        unit.body = sr;
+        unit.idleFrames = idle;
+        unit.runFrames = run;
+        return go;
+    }
 
     static void PlaceForests(Transform parent)
     {
@@ -670,22 +731,13 @@ public static class RTSMapGenerator
 
         var sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
-        sr.sortingOrder = SortOrder(baseX, baseY);
+        sr.sortingOrder = MapSorting.Order(baseX, baseY);
 
         if (frames.Length > 1)
             go.AddComponent<SpriteSheetAnimator>().frames = frames;
         return go;
     }
 
-    /// <summary>
-    /// Aşağıdaki obje öndedir. Aynı sıra numarası iki objeye denk gelirse Unity'nin çizim sırası
-    /// kare kare değişip titriyor; bu yüzden y'ye ince hassasiyet ve x'e küçük bir ayırıcı ekleniyor.
-    /// sortingOrder en fazla 32767 olabildiği için çarpan haritanın yüksekliğine göre seçiliyor.
-    /// </summary>
-    static readonly float SortScale = Mathf.Min(100f, 32000f / (H + 1));
-
-    static int SortOrder(float baseX, float baseY) =>
-        Mathf.RoundToInt((H - baseY) * SortScale) + Mathf.FloorToInt(baseX * 3f) % 10;
 
     static readonly Dictionary<string, Sprite[]> frameCache = new Dictionary<string, Sprite[]>();
 
@@ -713,7 +765,7 @@ public static class RTSMapGenerator
         return scene;
     }
 
-    static void SetupCamera()
+    static void SetupCamera(Vector3 focus)
     {
         var cam = Camera.main;
         if (cam == null)
@@ -725,7 +777,7 @@ public static class RTSMapGenerator
         cam.orthographicSize = 10f;
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = new Color32(71, 171, 169, 255);
-        cam.transform.position = new Vector3(W / 2f, H / 2f, -10f);
+        cam.transform.position = new Vector3(focus.x, focus.y, -10f);
 
         var ctrl = cam.GetComponent<RTSCameraController>();
         if (ctrl == null) ctrl = cam.gameObject.AddComponent<RTSCameraController>();
