@@ -68,7 +68,9 @@ public class Unit : MonoBehaviour
         {
             Vector2 pos = transform.position;
             Vector2 toTarget = target - pos;
-            float step = moveSpeed * Time.deltaTime;
+            // Bataklık gibi biyomlar yavaşlatır
+            float terrain = MapData.Instance != null ? MapData.Instance.SpeedMultiplierAt(pos) : 1f;
+            float step = moveSpeed * terrain * Time.deltaTime;
 
             if (toTarget.magnitude <= step)
             {
