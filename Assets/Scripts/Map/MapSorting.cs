@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
 public static class MapSorting
 {
-    public const int MapHeight = 216;
+    public const int MapHeight = 261 * 3; // RTSMapGenerator.MapScale ile aynı olmalı
 
     // sortingOrder en fazla 32767 olabildiği için çarpan haritanın yüksekliğine göre seçiliyor
     static readonly float Scale = Mathf.Min(100f, 32000f / (MapHeight + 1));

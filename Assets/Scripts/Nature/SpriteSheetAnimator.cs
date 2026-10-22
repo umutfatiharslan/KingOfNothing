@@ -3,6 +3,8 @@ using UnityEngine;
 /// <summary>
 /// Sprite sheet karelerini döngüyle oynatır (ağaç, çalı, koyun, sudaki kaya...).
 /// Her obje rastgele bir kareden ve hafif farklı hızda başlar, böylece orman aynı anda sallanmaz.
+/// Sadece kamerada görünürken çalışır: büyük haritada on binlerce obje var, hepsini her karede
+/// güncellemek FPS'i düşürüyordu.
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
 public class SpriteSheetAnimator : MonoBehaviour
@@ -23,7 +25,12 @@ public class SpriteSheetAnimator : MonoBehaviour
         speed = fps * Random.Range(1f - speedVariation, 1f + speedVariation);
         if (randomStart && frames != null && frames.Length > 0)
             time = Random.Range(0f, frames.Length / speed);
+        // Görünür olunca OnBecameVisible açar
+        enabled = sr.isVisible;
     }
+
+    void OnBecameVisible() => enabled = true;
+    void OnBecameInvisible() => enabled = false;
 
     void Update()
     {
