@@ -1,21 +1,33 @@
 using UnityEngine;
 
-/// <summary>
-/// Haritadaki objelerin (ağaç, birim, bina...) çizim sırası. Aşağıdaki obje öndedir.
-/// Harita üreticisi ve hareket eden birimler aynı formülü kullanmalı, yoksa ağaçların önüne/arkasına
-/// geçerken birimler yanlış çizilir.
-/// </summary>
-public static class MapSorting
+namespace KingOfNothing.World
 {
-    public const int MapHeight = 261 * 3; // RTSMapGenerator.MapScale ile aynı olmalı
+    /// <summary>
+    /// Draw order of map objects (trees, units, buildings...): the lower an object stands, the more in front
+    /// it is drawn. The map generator and moving units must use the same formula, otherwise units are drawn
+    /// wrongly when walking in front of / behind trees.
+    /// </summary>
+    public static class MapSorting
+    {
+        public static int MapHeight { get; private set; } = 800;
 
-    // sortingOrder en fazla 32767 olabildiği için çarpan haritanın yüksekliğine göre seçiliyor
-    static readonly float Scale = Mathf.Min(100f, 32000f / (MapHeight + 1));
+        // sortingOrder is limited to 32767, so the multiplier depends on the map height
+        static float scale = ComputeScale(800);
 
-    /// <param name="x">Objenin zemine değdiği noktanın x'i.</param>
-    /// <param name="y">Objenin zemine değdiği noktanın y'si.</param>
-    public static int Order(float x, float y) =>
-        // Aynı sıra numarası iki objeye denk gelirse Unity'nin çizim sırası kare kare değişip titriyor;
-        // x'ten küçük bir ayırıcı eklenmesinin sebebi bu.
-        Mathf.RoundToInt((MapHeight - y) * Scale) + Mathf.Abs(Mathf.FloorToInt(x * 3f)) % 10;
+        /// <summary>Called by MapData when a map is generated or loaded.</summary>
+        public static void Configure(int mapHeight)
+        {
+            MapHeight = Mathf.Max(1, mapHeight);
+            scale = ComputeScale(MapHeight);
+        }
+
+        static float ComputeScale(int height) => Mathf.Min(100f, 32000f / (height + 1));
+
+        /// <param name="x">X of the point where the object touches the ground.</param>
+        /// <param name="y">Y of the point where the object touches the ground.</param>
+        public static int Order(float x, float y) =>
+            // Two objects with the same order make Unity flip their draw order every frame (flicker);
+            // the small x based term separates them.
+            Mathf.RoundToInt((MapHeight - y) * scale) + Mathf.Abs(Mathf.FloorToInt(x * 3f)) % 10;
+    }
 }

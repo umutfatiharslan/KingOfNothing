@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06b7ce3b07af5924eb104910aa752933, type: 3}
+  m_Name: Ground Color3
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.GroundTileSet
+  tiles:
+  - {fileID: 11400000, guid: 5317b2515b86849c5b5ab2ed8a2b1c4c, type: 2}
+  - {fileID: 11400000, guid: 0f049559580b340acabce64a9da0b945, type: 2}
+  - {fileID: 11400000, guid: e1fc66146919a45809745b875b3339fe, type: 2}
+  - {fileID: 11400000, guid: 8f6c3805b620b48549d5e853f3ecf6e3, type: 2}
+  - {fileID: 11400000, guid: 78b61760fafaa4ebf9806e3a52162f48, type: 2}
+  - {fileID: 11400000, guid: 214ce0cdbcca04586be72581dc25b3e1, type: 2}
+  - {fileID: 11400000, guid: 76310ec51328049e39c17da26ceb00dc, type: 2}
+  - {fileID: 11400000, guid: 9672c2402d21c4ec8a423cf658457163, type: 2}
+  - {fileID: 11400000, guid: 64ecb9c7b8f9c4f5cb3a0d4a7de7ebc7, type: 2}
+  - {fileID: 11400000, guid: 123d129b58ed749dbacf100c0816a0b7, type: 2}
+  - {fileID: 11400000, guid: 2fccff816387f4b24aaef868b083bde2, type: 2}
+  - {fileID: 11400000, guid: c693d4a46ee8f407484fbef4e3958e58, type: 2}
+  - {fileID: 11400000, guid: 6a64d42f7a94f43848e6502e32008699, type: 2}
+  - {fileID: 11400000, guid: 45aa0ac3a99ce4e09b9fa4f2f1005b44, type: 2}
+  - {fileID: 11400000, guid: 5c637b4b0a3a744789b477c21b90888c, type: 2}
+  - {fileID: 11400000, guid: 809ed91fd31cb4ff49d3df0eb3eb0817, type: 2}
+  fallback: {fileID: 11400000, guid: 809ed91fd31cb4ff49d3df0eb3eb0817, type: 2}

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06b7ce3b07af5924eb104910aa752933, type: 3}
+  m_Name: Ground Desert
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.GroundTileSet
+  tiles:
+  - {fileID: 11400000, guid: b11761025084b1a48aac16e1fc871b53, type: 2}
+  - {fileID: 11400000, guid: 2fb3b515e57b8c2459873c80adaaf967, type: 2}
+  - {fileID: 11400000, guid: 704824cd457ca574090747e823ba0dab, type: 2}
+  - {fileID: 11400000, guid: 3ed780c090f0b4540acc5f6df25f06d7, type: 2}
+  - {fileID: 11400000, guid: 21bf1b6a356f00d4781ccdc00f341372, type: 2}
+  - {fileID: 11400000, guid: 9eecef47d724fd846b8b4cc1db8cef32, type: 2}
+  - {fileID: 11400000, guid: 4aae33fdfb82e6f45a2b3eb01f3c76a7, type: 2}
+  - {fileID: 11400000, guid: ab86ec9e80464cb4fa9b7af551b59145, type: 2}
+  - {fileID: 11400000, guid: c91ccb54f38acfd4e83d93012ebe88ec, type: 2}
+  - {fileID: 11400000, guid: eb784ffed1d76974e947635dfa0bc445, type: 2}
+  - {fileID: 11400000, guid: 5f5531cbf0e232944ba30447b9915e02, type: 2}
+  - {fileID: 11400000, guid: 9be18c5967ceb4a488af7350aa8386d9, type: 2}
+  - {fileID: 11400000, guid: 881d53ff1477c4c42b4cd8b1ad3fcb51, type: 2}
+  - {fileID: 11400000, guid: fd6a164ded1b8454c9c9b5485a6a3b66, type: 2}
+  - {fileID: 11400000, guid: 543d97c657546714ab61e464527f6501, type: 2}
+  - {fileID: 11400000, guid: 2842e5e421b59484d83b8ed247b869db, type: 2}
+  fallback: {fileID: 11400000, guid: 2842e5e421b59484d83b8ed247b869db, type: 2}

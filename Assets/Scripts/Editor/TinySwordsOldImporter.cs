@@ -1,28 +1,31 @@
 using UnityEditor;
 
-/// <summary>
-/// "Assets/Tiny Swords Old" klasörüne giren görsellere yeni Tiny Swords paketiyle aynı içe aktarma
-/// ayarlarını verir: 64 piksel = 1 birim, keskin piksel (Point), sıkıştırma yok.
-/// Sprite sheet'ler Single modda gelir; kullanılacakları zaman Sprite Editor'de dilimlenmeleri gerekir.
-/// </summary>
-public class TinySwordsOldImporter : AssetPostprocessor
+namespace KingOfNothing.EditorTools
 {
-    const string Folder = "Assets/Tiny Swords Old/";
-
-    void OnPreprocessTexture()
+    /// <summary>
+    /// Gives textures imported into "Assets/Tiny Swords Old" the same import settings as the new Tiny Swords
+    /// pack: 64 pixels = 1 unit, crisp pixels (Point), no compression. Sprite sheets come in as Single and
+    /// have to be sliced in the Sprite Editor when they are used.
+    /// </summary>
+    public class TinySwordsOldImporter : AssetPostprocessor
     {
-        if (!assetPath.StartsWith(Folder)) return;
+        const string Folder = "Assets/Tiny Swords Old/";
 
-        var importer = (TextureImporter)assetImporter;
-        // Sadece ilk içe aktarmada ayarla, sonradan elle yapılan dilimleme/ayar değişikliklerini ezme
-        if (!importer.importSettingsMissing) return;
+        void OnPreprocessTexture()
+        {
+            if (!assetPath.StartsWith(Folder)) return;
 
-        importer.textureType = TextureImporterType.Sprite;
-        importer.spriteImportMode = SpriteImportMode.Single;
-        importer.spritePixelsPerUnit = 64;
-        importer.filterMode = UnityEngine.FilterMode.Point;
-        importer.textureCompression = TextureImporterCompression.Uncompressed;
-        importer.mipmapEnabled = false;
-        importer.alphaIsTransparency = true;
+            var importer = (TextureImporter)assetImporter;
+            // Only on the first import, so later manual slicing / settings are not overwritten
+            if (!importer.importSettingsMissing) return;
+
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.spritePixelsPerUnit = 64;
+            importer.filterMode = UnityEngine.FilterMode.Point;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.mipmapEnabled = false;
+            importer.alphaIsTransparency = true;
+        }
     }
 }

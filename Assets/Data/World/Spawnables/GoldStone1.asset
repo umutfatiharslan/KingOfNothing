@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10a4a630219e95a47ad23e0674ee93b3, type: 3}
+  m_Name: GoldStone1
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.SpawnableDefinition
+  displayName: Gold Stone 1
+  kind: 5
+  frames:
+  - {fileID: -5856245565536492706, guid: afdf6d88fa33441cbbeb59179288be6f, type: 3}
+  - {fileID: -7131320178231596415, guid: afdf6d88fa33441cbbeb59179288be6f, type: 3}
+  - {fileID: -2614740344288826277, guid: afdf6d88fa33441cbbeb59179288be6f, type: 3}
+  - {fileID: 8896650010037430312, guid: afdf6d88fa33441cbbeb59179288be6f, type: 3}
+  - {fileID: 4038042257015875582, guid: afdf6d88fa33441cbbeb59179288be6f, type: 3}
+  - {fileID: -3659362473146157987, guid: afdf6d88fa33441cbbeb59179288be6f, type: 3}
+  animate: 1
+  animationFps: 10
+  prefabOverride: {fileID: 0}
+  footprint: {x: 1, y: 1}
+  groundInset: 0.3
+  blocksBuilding: 1
+  resourceType: 4
+  maxHealth: 40
+  yieldAmount: 1
+  stump: {fileID: 0}

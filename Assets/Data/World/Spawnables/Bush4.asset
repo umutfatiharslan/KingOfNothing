@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10a4a630219e95a47ad23e0674ee93b3, type: 3}
+  m_Name: Bush4
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.SpawnableDefinition
+  displayName: Bush 4
+  kind: 3
+  frames:
+  - {fileID: -1604862082099773515, guid: 35328aa4331c645f39768db2fd54501e, type: 3}
+  - {fileID: -2421923038010285078, guid: 35328aa4331c645f39768db2fd54501e, type: 3}
+  - {fileID: 3107643133992848335, guid: 35328aa4331c645f39768db2fd54501e, type: 3}
+  - {fileID: -1796514972878875071, guid: 35328aa4331c645f39768db2fd54501e, type: 3}
+  - {fileID: 2872366895844429945, guid: 35328aa4331c645f39768db2fd54501e, type: 3}
+  - {fileID: -5096520015912206362, guid: 35328aa4331c645f39768db2fd54501e, type: 3}
+  - {fileID: 6994710136649292932, guid: 35328aa4331c645f39768db2fd54501e, type: 3}
+  - {fileID: -7590220760718205482, guid: 35328aa4331c645f39768db2fd54501e, type: 3}
+  animate: 1
+  animationFps: 10
+  prefabOverride: {fileID: 0}
+  footprint: {x: 1, y: 1}
+  groundInset: 0.3
+  blocksBuilding: 0
+  resourceType: 0
+  maxHealth: 5
+  yieldAmount: 0
+  stump: {fileID: 0}

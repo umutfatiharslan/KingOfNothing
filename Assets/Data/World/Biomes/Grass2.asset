@@ -1,0 +1,281 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3f09c779f8b08041827eda614fa887f, type: 3}
+  m_Name: Grass2
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.BiomeDefinition
+  displayName: Grass 2 (color2)
+  previewColor: {r: 0.47058824, g: 0.6862745, b: 0.27450982, a: 1}
+  groundTiles: {fileID: 11400000, guid: dcad24524b861c244b9da2443ca6209a, type: 2}
+  movementSpeedMultiplier: 1
+  generation:
+    placementMode: 0
+    tags: 16
+    fillerWeight: 0.3
+    mapCoverage: 0.05
+    regionCount:
+      min: 3
+      max: 5
+    regionSizeVariation: 0.3
+    placementPriority: 0
+    preferredWaterDistance:
+      min: 0
+      max: 9999
+    waterPreferenceStrength: 1
+    repelledTags: 0
+    repelDistance: 12
+    pondsPer10000Cells: 1.6
+    marshWaterRatio: 0
+  spawnRules:
+  - label: Trees
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 32b69828e0b78da44af43e617add8d64, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: c87306213536f4c4e9f755509be4b98d, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 0
+      densityPer1000Cells: 380
+      count:
+        min: 5
+        max: 10
+      useClustering: 1
+      clusterNoise:
+        scale: 42
+        octaves: 4
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.57
+      clusterFalloff: 0.1
+      outsideClusterFactor: 0.04
+      minSpacingX: 1
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 2
+        max: 9999
+      priority: 20
+      positionJitter: 0.3
+    stumpChance: 0.03
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+  - label: Bushes
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: db7c2240fa8318d4298873890ac3e489, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 454fb32c8a870514589e2b06c7f39ae7, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 0
+      densityPer1000Cells: 60
+      count:
+        min: 5
+        max: 10
+      useClustering: 1
+      clusterNoise:
+        scale: 14
+        octaves: 2
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.45
+      clusterFalloff: 0.2
+      outsideClusterFactor: 0.3
+      minSpacingX: 0
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 1
+        max: 9999
+      priority: 30
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+  - label: Mushrooms
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 6d5e5d4d194de1743b911a06ca6e3b60, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 77373314a8e8f214982d5d4e4488ca7d, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 078a37041ae825b44b1477844726b665, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 0
+      densityPer1000Cells: 6
+      count:
+        min: 5
+        max: 10
+      useClustering: 1
+      clusterNoise:
+        scale: 12
+        octaves: 2
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.45
+      clusterFalloff: 0.2
+      outsideClusterFactor: 0.15
+      minSpacingX: 0
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 1
+        max: 9999
+      priority: 35
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+  - label: Stones
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 8eddb5ee179793947be500a3075fbdde, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: b2536eddcc8f38743868235385b68680, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 870d2a678e4512c48968792241cbd91c, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 811c3ab52b84e604eb363a813625e56e, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 0
+      densityPer1000Cells: 8
+      count:
+        min: 5
+        max: 10
+      useClustering: 1
+      clusterNoise:
+        scale: 18
+        octaves: 2
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.45
+      clusterFalloff: 0.2
+      outsideClusterFactor: 0.3
+      minSpacingX: 0
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 1
+        max: 9999
+      priority: 40
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+  - label: Gold Stones
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: a470627335b3e52459bebb0508c4c869, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 7087dc84d580573438d5800a06cbb520, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: cbd7b6bb8be8e3a47904aff9674da697, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 94b70c6d06bdfcd45856cdd4265238bd, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 0
+      densityPer1000Cells: 1.5
+      count:
+        min: 5
+        max: 10
+      useClustering: 0
+      clusterNoise:
+        scale: 1
+        octaves: 2
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.45
+      clusterFalloff: 0.2
+      outsideClusterFactor: 0.3
+      minSpacingX: 0
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 2
+        max: 9999
+      priority: 15
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+  - label: Pumpkins
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 9940cb2ce16bc804b8ccb4af66865b6f, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: deafd022bb751954f9dfab7a8a70d04a, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 1
+      densityPer1000Cells: 5
+      count:
+        min: 70
+        max: 120
+      useClustering: 0
+      clusterNoise:
+        scale: 26
+        octaves: 3
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.55
+      clusterFalloff: 0.1
+      outsideClusterFactor: 0.05
+      minSpacingX: 0
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 2
+        max: 9999
+      priority: 12
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []

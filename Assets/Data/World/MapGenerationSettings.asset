@@ -1,0 +1,342 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5b5a423e916ba546b86bc5797989af4, type: 3}
+  m_Name: MapGenerationSettings
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.MapGenerationSettings
+  width: 1800
+  height: 800
+  seed: 20261024
+  landmass:
+    landRatio: 0.4
+    initialOvershoot: 0.03
+    elevationNoise:
+      scale: 360
+      octaves: 6
+      lacunarity: 2
+      persistence: 0.5
+    warpNoise:
+      scale: 300
+      octaves: 3
+      lacunarity: 2
+      persistence: 0.5
+    warpStrength: 140
+    edgeFalloffStart: 0.66
+    edgeFalloffEnd: 0.97
+    edgeFalloffStrength: 0.7
+    edgeShapeExponent: 3
+    edgeNoise:
+      scale: 160
+      octaves: 4
+      lacunarity: 2
+      persistence: 0.5
+    edgeNoiseStrength: 0.22
+    borderMargin: 8
+    coastSmoothingPasses: 3
+    minIslandSize: 600
+    minInlandWaterSize: 300
+  lakes:
+    enabled: 1
+    count:
+      min: 10
+      max: 16
+    radius:
+      min: 6
+      max: 26
+    smallLakeBias: 2.2
+    lobes:
+      min: 1
+      max: 3
+    shoreWobble: 0.35
+    minDistanceToCoast: 14
+    minDistanceBetweenLakes: 70
+    outletChance: 0.7
+    outletsPerLake:
+      min: 1
+      max: 2
+  rivers:
+    enabled: 1
+    courseNoise:
+      scale: 45
+      octaves: 4
+      lacunarity: 2
+      persistence: 0.5
+    courseContrast: 9
+    courseWarpNoise:
+      scale: 120
+      octaves: 2
+      lacunarity: 2
+      persistence: 0.5
+    courseWarpStrength: 80
+    sourceCount:
+      min: 12
+      max: 18
+    minSourceDistanceToSea: 90
+    minDistanceBetweenSources: 80
+    minRiverLength: 70
+    tributariesPerRiver:
+      min: 1
+      max: 3
+    tributaryDistance:
+      min: 25
+      max: 70
+    minTributaryLength: 20
+    sourceWidth: 1
+    maxWidth: 6
+    widthStepLength:
+      min: 30
+      max: 55
+    widthStep: 1
+    confluenceBonus: 1
+    meanderAmplitude: 6
+    meanderWavelength: 55
+    courseSmoothing: 7
+  wetlands:
+    pondRadius:
+      min: 1
+      max: 3.2
+    pondMinDistanceToWater: 5
+    marshNoise:
+      scale: 7
+      octaves: 2
+      lacunarity: 2
+      persistence: 0.5
+    marshEdgeMargin: 3
+  landBalance:
+    enabled: 1
+    tolerance: 0.0005
+    maxIterations: 400
+    coastLayerFraction: 0.5
+    coastNoise:
+      scale: 25
+      octaves: 2
+      lacunarity: 2
+      persistence: 0.5
+    coastNoiseStrength: 0.04
+    minIslandSize: 30
+  biomeLayout:
+    borderNoise:
+      scale: 40
+      octaves: 4
+      lacunarity: 2
+      persistence: 0.5
+    borderContrast: 9
+    broadBorderNoise:
+      scale: 150
+      octaves: 3
+      lacunarity: 2
+      persistence: 0.5
+    broadBorderContrast: 3
+    fillerGrowthVariation: 0.35
+    fillerRegionSize: 9000
+    riverCrossingCost: 4
+    seedCandidates: 80
+    regionSpreadDistance: 400
+    smoothingPasses: 2
+    smoothingRadius: 2
+    smoothingMargin: 3
+    minPatchSize: 40
+  biomes:
+  - {fileID: 11400000, guid: 07ff26ddfe0d2f942abe463615f178d8, type: 2}
+  - {fileID: 11400000, guid: 210ea20d03b057744aef6d52c69b9dc7, type: 2}
+  - {fileID: 11400000, guid: c7d0068c9db81d94283af97194adc3ff, type: 2}
+  - {fileID: 11400000, guid: bca1a71df18360445afcb4979a94f3b9, type: 2}
+  - {fileID: 11400000, guid: bb1e2d8de1363cf4f8fd5521fc37ae44, type: 2}
+  - {fileID: 11400000, guid: c3a82abd162131741b7b24d84be78b4e, type: 2}
+  - {fileID: 11400000, guid: 65b8ab757ba4b464fb2322436dfa0a09, type: 2}
+  globalSpawnRules:
+  - label: Gold Mines
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 76b653f1ac36a634b9db55dc35a40432, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 1
+      densityPer1000Cells: 5
+      count:
+        min: 25
+        max: 40
+      useClustering: 0
+      clusterNoise:
+        scale: 26
+        octaves: 3
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.55
+      clusterFalloff: 0.1
+      outsideClusterFactor: 0.05
+      minSpacingX: 40
+      minSpacingY: 40
+      minDistanceToOtherObjects: 1
+      shoreDistance:
+        min: 3
+        max: 9999
+      priority: 0
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+    allowedBiomes:
+    - {fileID: 11400000, guid: 07ff26ddfe0d2f942abe463615f178d8, type: 2}
+    - {fileID: 11400000, guid: 210ea20d03b057744aef6d52c69b9dc7, type: 2}
+    - {fileID: 11400000, guid: c7d0068c9db81d94283af97194adc3ff, type: 2}
+    - {fileID: 11400000, guid: bca1a71df18360445afcb4979a94f3b9, type: 2}
+    - {fileID: 11400000, guid: 65b8ab757ba4b464fb2322436dfa0a09, type: 2}
+  - label: Skulls
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: a7445392c2e858a419f71142faa312fa, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 1
+      densityPer1000Cells: 5
+      count:
+        min: 100
+        max: 180
+      useClustering: 0
+      clusterNoise:
+        scale: 26
+        octaves: 3
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.55
+      clusterFalloff: 0.1
+      outsideClusterFactor: 0.05
+      minSpacingX: 6
+      minSpacingY: 6
+      minDistanceToOtherObjects: 1
+      shoreDistance:
+        min: 2
+        max: 9999
+      priority: 5
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 1
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants:
+      - spawnable: {fileID: 11400000, guid: 96129a36a8373694ba0dc4465daad600, type: 2}
+        weight: 1
+      - spawnable: {fileID: 11400000, guid: a2edbe97dd319274da6e24eacb4c6781, type: 2}
+        weight: 1
+    allowedBiomes:
+    - {fileID: 11400000, guid: 07ff26ddfe0d2f942abe463615f178d8, type: 2}
+    - {fileID: 11400000, guid: 210ea20d03b057744aef6d52c69b9dc7, type: 2}
+    - {fileID: 11400000, guid: c7d0068c9db81d94283af97194adc3ff, type: 2}
+    - {fileID: 11400000, guid: bca1a71df18360445afcb4979a94f3b9, type: 2}
+    - {fileID: 11400000, guid: c3a82abd162131741b7b24d84be78b4e, type: 2}
+  - label: Bones
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 96129a36a8373694ba0dc4465daad600, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: a2edbe97dd319274da6e24eacb4c6781, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 1
+      densityPer1000Cells: 5
+      count:
+        min: 250
+        max: 300
+      useClustering: 0
+      clusterNoise:
+        scale: 26
+        octaves: 3
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.55
+      clusterFalloff: 0.1
+      outsideClusterFactor: 0.05
+      minSpacingX: 0
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 2
+        max: 9999
+      priority: 50
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+    allowedBiomes:
+    - {fileID: 11400000, guid: 07ff26ddfe0d2f942abe463615f178d8, type: 2}
+    - {fileID: 11400000, guid: 210ea20d03b057744aef6d52c69b9dc7, type: 2}
+    - {fileID: 11400000, guid: c7d0068c9db81d94283af97194adc3ff, type: 2}
+    - {fileID: 11400000, guid: bca1a71df18360445afcb4979a94f3b9, type: 2}
+    - {fileID: 11400000, guid: c3a82abd162131741b7b24d84be78b4e, type: 2}
+  - label: Water Rocks
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 570f87114db1d0248b2cc340cca93fc6, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 2da0202981b004f49af70145463bd0c3, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 68ad409905f99d84cbaa3d853cf264e5, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: b25805eb7919ae84c91b04f2843f3bb7, type: 2}
+      weight: 1
+    allowedTerrain: 13
+    placement:
+      distribution: 0
+      densityPer1000Cells: 8
+      count:
+        min: 5
+        max: 10
+      useClustering: 0
+      clusterNoise:
+        scale: 26
+        octaves: 3
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.55
+      clusterFalloff: 0.1
+      outsideClusterFactor: 0.05
+      minSpacingX: 2
+      minSpacingY: 2
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 2
+        max: 4
+      priority: 60
+      positionJitter: 0
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+    allowedBiomes: []
+  startArea:
+    clearRadius: 5
+    minDistanceToWater: 8
+    avoidedTags: 13
+    randomness: 0.35
+  waterFoamTile: {fileID: 11400000, guid: 8f3054a4926764fb58dbabffc35a76b8, type: 2}
+  waterColor: {r: 0.2784314, g: 0.67058825, b: 0.6627451, a: 1}
+  groundSortingOrder: -40

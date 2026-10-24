@@ -1,4 +1,4 @@
-# Unity'nin her bilgisayarda kendisinin ürettiği klasörler
+# Folders Unity regenerates on every machine
 /[Ll]ibrary/
 /[Tt]emp/
 /[Oo]bj/
@@ -9,10 +9,10 @@
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
 
-# Asset Store araçları
+# Asset Store tools
 /[Aa]ssets/AssetStoreTools*
 
-# IDE / Visual Studio / Rider dosyaları (Unity yeniden üretir)
+# IDE / Visual Studio / Rider files (Unity regenerates them)
 .vs/
 .vscode/
 .idea/
@@ -36,7 +36,7 @@
 *.pdb.meta
 *.mdb.meta
 
-# Çökme / build artıkları
+# Crash / build leftovers
 sysinfo.txt
 crashlytics-build.properties
 *.apk
@@ -48,12 +48,11 @@ crashlytics-build.properties
 .gradle/
 /[Aa]ssets/[Ss]treamingAssets/aa*
 
-# İşletim sistemi
+# Operating system
 .DS_Store
 Thumbs.db
 Desktop.ini
 
-# Üretilen harita sahnesi (~75 MB): herkes Unity'de RTS > Harita Oluştur ile kendisi üretir.
-# Sabit seed sayesinde herkeste aynı harita çıkar.
+# Old baked map scene (very large). The new World.unity generates the map at runtime and is small enough to commit.
 /Assets/Scenes/RTSMap.unity
 /Assets/Scenes/RTSMap.unity.meta

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06b7ce3b07af5924eb104910aa752933, type: 3}
+  m_Name: Ground Rock
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.GroundTileSet
+  tiles:
+  - {fileID: 11400000, guid: af352f892ded48541979c0ce9f405f91, type: 2}
+  - {fileID: 11400000, guid: 314848f887f5c714ea74ec2766abf39f, type: 2}
+  - {fileID: 11400000, guid: fc741bb841fbc54479cdb4cd8619e72d, type: 2}
+  - {fileID: 11400000, guid: 1251498b1a1afd147ac841479d6f0ae1, type: 2}
+  - {fileID: 11400000, guid: 1c1a50af8aa72dd48b13995f26e209b2, type: 2}
+  - {fileID: 11400000, guid: fdc9c81c045f6424f9d1435fc3bf062c, type: 2}
+  - {fileID: 11400000, guid: 9c353e6422e0a0140b5f9b17b18a32d7, type: 2}
+  - {fileID: 11400000, guid: 69d95bdc320027b478e7d1dd885d7884, type: 2}
+  - {fileID: 11400000, guid: ce86000d9fd66374e8b010e512e17ed1, type: 2}
+  - {fileID: 11400000, guid: da885fb61fa58264cbfd9f638af45919, type: 2}
+  - {fileID: 11400000, guid: fcbf8ae11d206594e9701b8977c32071, type: 2}
+  - {fileID: 11400000, guid: 4dc8f3ff381307440835112da8e446bd, type: 2}
+  - {fileID: 11400000, guid: b0027b0a1bbed6b4caeb35d9a2df2e36, type: 2}
+  - {fileID: 11400000, guid: 2f7451f6fe2256140a52e43755350a72, type: 2}
+  - {fileID: 11400000, guid: 3d8599e8671a2e04e9c80f67bad94184, type: 2}
+  - {fileID: 11400000, guid: d7ae7e72d02725c42ba5270efbd222cf, type: 2}
+  fallback: {fileID: 11400000, guid: d7ae7e72d02725c42ba5270efbd222cf, type: 2}

@@ -1,47 +1,61 @@
 using UnityEngine;
 
-/// <summary>
-/// Sprite sheet karelerini döngüyle oynatır (ağaç, çalı, koyun, sudaki kaya...).
-/// Her obje rastgele bir kareden ve hafif farklı hızda başlar, böylece orman aynı anda sallanmaz.
-/// Sadece kamerada görünürken çalışır: büyük haritada on binlerce obje var, hepsini her karede
-/// güncellemek FPS'i düşürüyordu.
-/// </summary>
-[RequireComponent(typeof(SpriteRenderer))]
-public class SpriteSheetAnimator : MonoBehaviour
+namespace KingOfNothing.World
 {
-    public Sprite[] frames;
-    public float fps = 10f;
-    public bool randomStart = true;
-    [Range(0f, 0.5f)] public float speedVariation = 0.15f;
-
-    SpriteRenderer sr;
-    float time;
-    float speed;
-    int current = -1;
-
-    void Awake()
+    /// <summary>
+    /// Loops sprite sheet frames (trees, bushes, gold stones, water rocks...).
+    /// Every object starts on a random frame with a slightly different speed so a forest does not sway in sync.
+    /// Only runs while visible: the map has tens of thousands of objects and updating all of them every frame
+    /// costs a lot of FPS.
+    /// </summary>
+    [RequireComponent(typeof(SpriteRenderer))]
+    public class SpriteSheetAnimator : MonoBehaviour
     {
-        sr = GetComponent<SpriteRenderer>();
-        speed = fps * Random.Range(1f - speedVariation, 1f + speedVariation);
-        if (randomStart && frames != null && frames.Length > 0)
-            time = Random.Range(0f, frames.Length / speed);
-        // Görünür olunca OnBecameVisible açar
-        enabled = sr.isVisible;
-    }
+        [SerializeField] Sprite[] frames;
+        [Min(0f)] [SerializeField] float fps = 10f;
+        [SerializeField] bool randomStart = true;
+        [Range(0f, 0.5f)] [SerializeField] float speedVariation = 0.15f;
 
-    void OnBecameVisible() => enabled = true;
-    void OnBecameInvisible() => enabled = false;
+        SpriteRenderer spriteRenderer;
+        float time;
+        float speed;
+        int current = -1;
 
-    void Update()
-    {
-        if (frames == null || frames.Length == 0) return;
-
-        time += Time.deltaTime;
-        int index = (int)(time * speed) % frames.Length;
-        if (index != current)
+        public void Setup(Sprite[] newFrames, float newFps)
         {
+            frames = newFrames;
+            fps = newFps;
+            Restart();
+        }
+
+        void Awake()
+        {
+            spriteRenderer = GetComponent<SpriteRenderer>();
+            Restart();
+            // OnBecameVisible switches it on when the camera sees it
+            enabled = spriteRenderer.isVisible;
+        }
+
+        void Restart()
+        {
+            speed = fps * Random.Range(1f - speedVariation, 1f + speedVariation);
+            if (randomStart && frames != null && frames.Length > 0 && speed > 0f)
+                time = Random.Range(0f, frames.Length / speed);
+        }
+
+        void OnBecameVisible() => enabled = true;
+        void OnBecameInvisible() => enabled = false;
+
+        void Update()
+        {
+            if (frames == null || frames.Length == 0 || speed <= 0f) return;
+            if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
+
+            time += Time.deltaTime;
+            int index = (int)(time * speed) % frames.Length;
+            if (index == current) return;
             current = index;
-            sr.sprite = frames[index];
+            spriteRenderer.sprite = frames[index];
         }
     }
 }

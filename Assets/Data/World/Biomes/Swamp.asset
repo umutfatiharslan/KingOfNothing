@@ -1,0 +1,115 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3f09c779f8b08041827eda614fa887f, type: 3}
+  m_Name: Swamp
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.BiomeDefinition
+  displayName: Swamp (color5)
+  previewColor: {r: 0.3137255, g: 0.43137255, b: 0.27450982, a: 1}
+  groundTiles: {fileID: 11400000, guid: 5ab5affff3767ff40b0af02d694c5e0b, type: 2}
+  movementSpeedMultiplier: 0.8
+  generation:
+    placementMode: 1
+    tags: 4
+    fillerWeight: 1
+    mapCoverage: 0.03
+    regionCount:
+      min: 5
+      max: 8
+    regionSizeVariation: 0.3
+    placementPriority: 2
+    preferredWaterDistance:
+      min: 0
+      max: 20
+    waterPreferenceStrength: 3
+    repelledTags: 0
+    repelDistance: 12
+    pondsPer10000Cells: 0
+    marshWaterRatio: 0.3
+  spawnRules:
+  - label: Dead Trees (waiting for assets)
+    enabled: 0
+    variants: []
+    allowedTerrain: 2
+    placement:
+      distribution: 0
+      densityPer1000Cells: 600
+      count:
+        min: 5
+        max: 10
+      useClustering: 1
+      clusterNoise:
+        scale: 42
+        octaves: 4
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.35
+      clusterFalloff: 0.1
+      outsideClusterFactor: 0.4
+      minSpacingX: 1
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 2
+        max: 9999
+      priority: 20
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+  - label: Stones
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 8eddb5ee179793947be500a3075fbdde, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: b2536eddcc8f38743868235385b68680, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 870d2a678e4512c48968792241cbd91c, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 811c3ab52b84e604eb363a813625e56e, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 0
+      densityPer1000Cells: 6
+      count:
+        min: 5
+        max: 10
+      useClustering: 1
+      clusterNoise:
+        scale: 18
+        octaves: 2
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.45
+      clusterFalloff: 0.2
+      outsideClusterFactor: 0.3
+      minSpacingX: 0
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 1
+        max: 9999
+      priority: 40
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []

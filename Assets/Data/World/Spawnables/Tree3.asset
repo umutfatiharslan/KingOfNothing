@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10a4a630219e95a47ad23e0674ee93b3, type: 3}
+  m_Name: Tree3
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.SpawnableDefinition
+  displayName: Tree 3
+  kind: 1
+  frames:
+  - {fileID: -1922301785, guid: 9606510127d3043a5bbdf980402c1628, type: 3}
+  - {fileID: -1013242384, guid: 9606510127d3043a5bbdf980402c1628, type: 3}
+  - {fileID: 1692409792, guid: 9606510127d3043a5bbdf980402c1628, type: 3}
+  - {fileID: 1482489678, guid: 9606510127d3043a5bbdf980402c1628, type: 3}
+  - {fileID: 284301264, guid: 9606510127d3043a5bbdf980402c1628, type: 3}
+  - {fileID: -418281257, guid: 9606510127d3043a5bbdf980402c1628, type: 3}
+  - {fileID: 946590440, guid: 9606510127d3043a5bbdf980402c1628, type: 3}
+  - {fileID: 432765345, guid: 9606510127d3043a5bbdf980402c1628, type: 3}
+  animate: 1
+  animationFps: 10
+  prefabOverride: {fileID: 0}
+  footprint: {x: 1, y: 1}
+  groundInset: 0.55
+  blocksBuilding: 1
+  resourceType: 1
+  maxHealth: 25
+  yieldAmount: 3
+  stump: {fileID: 11400000, guid: 0716764ff016f9945b6ac7142a87ae89, type: 2}
