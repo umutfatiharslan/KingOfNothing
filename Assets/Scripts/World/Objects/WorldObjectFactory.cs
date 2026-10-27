@@ -14,6 +14,15 @@ namespace KingOfNothing.World.Objects
         public static Vector2 BasePoint(Vector2Int footprint, Vector2Int cell, Vector2 offset) =>
             new Vector2(cell.x + footprint.x * 0.5f + offset.x, cell.y + BaseOffsetY + offset.y);
 
+        /// <summary>Position of an object's sprite so its visible base (minus the ground inset) stands on the ground point.</summary>
+        public static Vector3 SpritePosition(SpawnableDefinition definition, Sprite sprite, Vector2Int cell, Vector2 offset)
+        {
+            var basePoint = BasePoint(definition.Footprint, cell, offset);
+            float scale = definition.VisualScale;
+            float centerY = basePoint.y + (sprite.bounds.extents.y - sprite.bounds.center.y - definition.GroundInset) * scale;
+            return new Vector3(basePoint.x, centerY, 0f);
+        }
+
         /// <param name="cell">Bottom-left cell of the footprint.</param>
         /// <param name="offset">Small random shift inside the cell.</param>
         /// <param name="uid">Id the object must keep (original map / edited map file). 0 = next free id.</param>
@@ -28,7 +37,14 @@ namespace KingOfNothing.World.Objects
             float baseY = basePoint.y;
 
             GameObject go;
-            if (definition.PrefabOverride != null)
+            if (definition is BuildingDefinition && definition.PrefabOverride == null)
+            {
+                // Buildings draw their own sprites (construction / finished / destroyed looks) as children
+                go = new GameObject(definition.DisplayName);
+                go.transform.SetParent(parent, false);
+                go.transform.position = new Vector3(baseX, baseY, 0f);
+            }
+            else if (definition.PrefabOverride != null)
             {
                 go = Object.Instantiate(definition.PrefabOverride, new Vector3(baseX, baseY, 0f), Quaternion.identity, parent);
                 go.name = definition.DisplayName;
@@ -44,8 +60,9 @@ namespace KingOfNothing.World.Objects
                 go = new GameObject(definition.DisplayName);
                 go.transform.SetParent(parent, false);
                 // Sprite pivots are centred: move the sprite up so its visible base touches the ground point
-                float centerY = baseY + sprite.bounds.extents.y - sprite.bounds.center.y - definition.GroundInset;
-                go.transform.position = new Vector3(baseX, centerY, 0f);
+                go.transform.position = SpritePosition(definition, sprite, cell, offset);
+                float scale = definition.VisualScale;
+                if (!Mathf.Approximately(scale, 1f)) go.transform.localScale = new Vector3(scale, scale, 1f);
 
                 var renderer = go.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
@@ -59,7 +76,10 @@ namespace KingOfNothing.World.Objects
             }
 
             var worldObject = go.GetComponent<WorldObject>();
-            if (worldObject == null) worldObject = AddComponentForKind(go, definition.Kind);
+            if (worldObject == null)
+                worldObject = definition is BuildingDefinition
+                    ? go.AddComponent<KingOfNothing.World.Buildings.Building>()
+                    : AddComponentForKind(go, definition.Kind);
             worldObject.AssignUid(uid);
             worldObject.Initialize(definition, cell, offset, map);
             configure?.Invoke(worldObject);
@@ -76,6 +96,7 @@ namespace KingOfNothing.World.Objects
                 case WorldObjectKind.GoldMine: return go.AddComponent<GoldMineResource>();
                 case WorldObjectKind.Stone:
                 case WorldObjectKind.GoldStone: return go.AddComponent<ResourceNode>();
+                case WorldObjectKind.Building: return go.AddComponent<KingOfNothing.World.Buildings.Building>();
                 default: return go.AddComponent<DecorationObject>();
             }
         }

@@ -64,6 +64,22 @@ namespace KingOfNothing.Characters
 
         void OnMapGenerated(MapGenerator _) => Spawn();
 
+        /// <summary>Adds one character with a profession at a position (developer tools).</summary>
+        public Villager SpawnVillager(VillagerRole role, Vector2 position)
+        {
+            if (villagerPrefab == null)
+            {
+                Debug.LogError("[StartingPartySpawner] Villager Prefab is not assigned.", this);
+                return null;
+            }
+            var villager = Instantiate(villagerPrefab, position, Quaternion.identity, transform);
+            string villagerName = namePool != null ? namePool.PickRandom() : $"{role} {spawned.Count + 1}";
+            villager.Setup(villagerName, UnityEngine.Random.Range(18, 45), role);
+            villager.Stats.Randomize(0, 3);
+            spawned.Add(villager);
+            return villager;
+        }
+
         public void Spawn()
         {
             foreach (var v in spawned)

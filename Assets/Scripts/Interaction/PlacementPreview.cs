@@ -17,6 +17,7 @@ namespace KingOfNothing.Interaction
         readonly List<SpriteRenderer> ghosts = new List<SpriteRenderer>();
         readonly List<Vector2Int> targets = new List<Vector2Int>();
         readonly List<bool> blocked = new List<bool>();
+        readonly List<Vector3> spriteOffsets = new List<Vector3>();
         readonly HashSet<WorldObject> moving = new HashSet<WorldObject>();
         GameObject root;
 
@@ -48,7 +49,10 @@ namespace KingOfNothing.Interaction
                 {
                     ghost.sprite = source.sprite;
                     ghost.flipX = source.flipX;
+                    ghost.transform.localScale = source.transform.lossyScale;
                 }
+                // The sprite may sit on a child (buildings): keep its offset from the ground point
+                spriteOffsets.Add((source != null ? source.transform.position : o.transform.position) - (Vector3)o.GroundPoint);
                 ghost.sortingOrder = short.MaxValue - 20;
                 ghosts.Add(ghost);
                 targets.Add(o.Cell);
@@ -74,7 +78,7 @@ namespace KingOfNothing.Interaction
                 blocked[i] = isBlocked;
                 AnyBlocked |= isBlocked;
 
-                var spriteOffset = o.transform.position - (Vector3)o.GroundPoint;
+                var spriteOffset = spriteOffsets[i];
                 var ground = WorldObjectFactory.BasePoint(o.Footprint, cell, o.Offset);
                 ghosts[i].transform.position = (Vector3)ground + spriteOffset;
                 ghosts[i].color = isBlocked && !allowOverlap ? settings.overlapTint : settings.previewTint;
@@ -90,6 +94,7 @@ namespace KingOfNothing.Interaction
             ghosts.Clear();
             targets.Clear();
             blocked.Clear();
+            spriteOffsets.Clear();
             moving.Clear();
             AnyBlocked = false;
         }

@@ -33,6 +33,10 @@ namespace KingOfNothing.World.Objects
         public static event Action<WorldObject, Vector2Int, Vector2Int> AnyMoved;
         /// <summary>The amount of a pile changed: (object, before, after).</summary>
         public static event Action<WorldObject, int, int> AnyAmountChanged;
+        /// <summary>The saved state of an object changed (a building was completed or destroyed): (object, before, after).</summary>
+        public static event Action<WorldObject, string, string> AnyStateChanged;
+        /// <summary>The kept state (not undone, e.g. a building's inventory) changed: the edited map must be saved.</summary>
+        public static event Action<WorldObject> AnyKeptStateChanged;
 
         public SpawnableDefinition Definition => definition;
         /// <summary>Unique id of the object on its map (0 = not registered yet).</summary>
@@ -66,8 +70,11 @@ namespace KingOfNothing.World.Objects
         public virtual string DisplayName =>
             (definition != null ? definition.DisplayName : name) + (amount > 1 ? $" x{amount}" : "");
 
-        /// <summary>Characters cannot pass through it (paths go around, the hitbox stops them).</summary>
-        public bool BlocksMovement => definition != null && !definition.WalkThrough;
+        /// <summary>
+        /// Characters cannot pass through it (paths go around, the hitbox stops them). Small loot lying on the
+        /// ground (item piles: wood, gold, coins...) never blocks, whatever its asset says.
+        /// </summary>
+        public bool BlocksMovement => definition != null && !definition.WalkThrough && definition.Kind != WorldObjectKind.Item;
         /// <summary>Speed multiplier for characters inside the object (1 for solid objects).</summary>
         public float WalkThroughSpeed => definition != null ? definition.WalkThroughSpeed : 1f;
         public bool FadesWhenHidingCharacter => definition == null || definition.FadeWhenHidingCharacter;
@@ -122,6 +129,98 @@ namespace KingOfNothing.World.Objects
                 return b;
             }
         }
+
+        // ------------------------------------------------------------------ extra state (buildings)
+
+        /// <summary>
+        /// Extra state saved in the edited map besides health and amount (a building's completion and inventory).
+        /// Null = nothing to save.
+        /// </summary>
+        public virtual string SaveState() => null;
+
+        /// <summary>Restores what SaveState returned (loading the edited map, undo / redo). Must not raise events.</summary>
+        public virtual void LoadState(string state) { }
+
+        /// <summary>Records a change of the extra state (call after the change, with the state from before).</summary>
+        protected void RaiseStateChanged(string before)
+        {
+            string after = SaveState();
+            if (before != after) AnyStateChanged?.Invoke(this, before, after);
+        }
+
+        /// <summary>
+        /// State saved in the edited map that undo / redo do not touch (a building's stored items: undoing a map
+        /// change never takes resources out of the stores). Null = nothing to keep.
+        /// </summary>
+        public virtual string SaveKeptState() => null;
+
+        /// <summary>Restores what SaveKeptState returned (loading the edited map).</summary>
+        public virtual void LoadKeptState(string state) { }
+
+        protected void RaiseKeptStateChanged() => AnyKeptStateChanged?.Invoke(this);
+
+        /// <summary>Normal opacity of the sprites (a template building is see-through); fading works relative to it.</summary>
+        public virtual float BaseAlpha => 1f;
+
+        /// <summary>
+        /// World-space area of the visible pixels of the sprites (the sprite's tight mesh, without the transparent
+        /// border of the image). Used to decide precisely when an object hides a character.
+        /// </summary>
+        public Rect VisiblePixels
+        {
+            get
+            {
+                bool any = false;
+                float xMin = 0f, yMin = 0f, xMax = 0f, yMax = 0f;
+                foreach (var r in Renderers)
+                {
+                    if (r == null || !r.enabled || r.sprite == null) continue;
+                    var vertices = r.sprite.vertices;
+                    if (vertices == null || vertices.Length == 0) continue;
+                    Vector2 lo = vertices[0], hi = vertices[0];
+                    for (int i = 1; i < vertices.Length; i++)
+                    {
+                        lo = Vector2.Min(lo, vertices[i]);
+                        hi = Vector2.Max(hi, vertices[i]);
+                    }
+                    Vector2 a = r.transform.TransformPoint(lo), b = r.transform.TransformPoint(hi);
+                    float x0 = Mathf.Min(a.x, b.x), x1 = Mathf.Max(a.x, b.x), y0 = Mathf.Min(a.y, b.y), y1 = Mathf.Max(a.y, b.y);
+                    if (r.flipX)
+                    {
+                        // Mirror around the renderer's pivot
+                        float px = r.transform.position.x;
+                        float nx0 = 2f * px - x1, nx1 = 2f * px - x0;
+                        x0 = nx0;
+                        x1 = nx1;
+                    }
+                    if (!any)
+                    {
+                        xMin = x0; xMax = x1; yMin = y0; yMax = y1;
+                        any = true;
+                    }
+                    else
+                    {
+                        xMin = Mathf.Min(xMin, x0); xMax = Mathf.Max(xMax, x1);
+                        yMin = Mathf.Min(yMin, y0); yMax = Mathf.Max(yMax, y1);
+                    }
+                }
+                if (!any)
+                {
+                    var b = VisualBounds;
+                    return new Rect(b.min.x, b.min.y, b.size.x, b.size.y);
+                }
+                return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+            }
+        }
+
+        /// <summary>Forget the cached renderers (an object that adds sprites later).</summary>
+        protected void InvalidateRenderers() => renderers = null;
+
+        /// <summary>Sorting order of the sprites for a ground point (bridges are drawn under the characters).</summary>
+        protected virtual int SortingOrderAt(Vector2 basePoint) => MapSorting.Order(basePoint.x, basePoint.y);
+
+        /// <summary>The cells under it can be walked on whatever the terrain (a finished bridge over water).</summary>
+        public virtual bool MakesGroundWalkable => false;
 
         /// <summary>Another object this one is tied to (the tree a stump grows back into). Null if none.</summary>
         public virtual SpawnableDefinition LinkedDefinition => null;
@@ -201,7 +300,7 @@ namespace KingOfNothing.World.Objects
             cell = newCell;
             var basePoint = WorldObjectFactory.BasePoint(footprint, cell, offset);
             foreach (var r in Renderers)
-                r.sortingOrder = MapSorting.Order(basePoint.x, basePoint.y);
+                r.sortingOrder = SortingOrderAt(basePoint);
 
             Register(map);
             AnyMoved?.Invoke(this, from, newCell);
@@ -239,7 +338,7 @@ namespace KingOfNothing.World.Objects
             cell = newCell;
             var basePoint = GroundPoint;
             transform.position = (Vector3)basePoint + spriteOffset;
-            foreach (var r in Renderers) r.sortingOrder = MapSorting.Order(basePoint.x, basePoint.y);
+            foreach (var r in Renderers) r.sortingOrder = SortingOrderAt(basePoint);
             Register(carriedFrom != null ? carriedFrom : MapData.Instance);
             if (newCell != carryStartCell) AnyMoved?.Invoke(this, carryStartCell, newCell);
         }

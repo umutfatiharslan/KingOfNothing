@@ -14,8 +14,8 @@ namespace KingOfNothing.Interaction
     {
         static readonly List<WorldObject> Candidates = new List<WorldObject>();
 
-        /// <summary>How far around the mouse cell objects are checked (tall trees are drawn several cells above their cell).</summary>
-        static readonly RectInt SearchArea = new RectInt(-3, -4, 7, 6);
+        /// <summary>How far around the mouse cell objects are checked (tall trees and buildings are drawn several cells above their cell).</summary>
+        static readonly RectInt SearchArea = new RectInt(-5, -6, 11, 8);
 
         public static WorldObject Pick(MapData map, Vector2 world)
         {

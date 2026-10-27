@@ -58,7 +58,7 @@ namespace KingOfNothing.Units
                 SetVisible(!hidden);
                 unit.WorkSpeedModifier = settings.carrySpeedMultiplier;
                 phase = Phase.Carry;
-                approach.Reset();
+                approach.Reset(true); // the walk below belongs to this job
                 unit.MoveTo(MapData.CellCenter(destination));
             }
 

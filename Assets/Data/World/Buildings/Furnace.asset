@@ -1,0 +1,119 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc00b9b52253603449d73501ff072d07, type: 3}
+  m_Name: Furnace
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.BuildingDefinition
+  displayName: Furnace
+  kind: 16
+  frames:
+  - {fileID: 21300000, guid: d79309ce9b85f47f5bfffa6659e02bfd, type: 3}
+  animate: 0
+  animationFps: 10
+  prefabOverride: {fileID: 0}
+  visualScale: 1
+  footprint: {x: 2, y: 1}
+  groundInset: 0.67
+  blocksBuilding: 1
+  walkThrough: 0
+  walkThroughSpeed: 1
+  hitboxSize: {x: 1.4, y: 0.8}
+  hitboxOffset: {x: 0, y: -0.15}
+  fadeWhenHidingCharacter: 0
+  movementConfigured: 1
+  resourceType: 0
+  maxHealth: 1000
+  yieldAmount: 0
+  drops: []
+  stackSize: 1
+  damagedFrames: []
+  movableByCharacters: 0
+  interactionTool: 0
+  dataVersion: 2
+  stump: {fileID: 0}
+  buildingType: 7
+  description: Melts 1 gold with 3 wood into a gold coin. Placeholder art until the
+    furnace asset exists.
+  menuIcon: {fileID: 0}
+  finishedScale: 0.5
+  centerOnFootprint: 0
+  drawUnderCharacters: 0
+  constructionStages:
+  - sprite: {fileID: 21300000, guid: eb8c7738ea36dbd48bc4304fd2ae479b, type: 3}
+    scale: 0.75
+    groundInset: 0.125
+    belowHealth: 300
+    repeatPerCell: 0
+  destroyedStages:
+  - sprite: {fileID: 21300000, guid: 65a74e59b4e920843bd373807cf0be98, type: 3}
+    scale: 0.75
+    groundInset: 0.41
+    belowHealth: 2147483647
+    repeatPerCell: 0
+  destroyedHealth: 300
+  spawnDestroyed: 0
+  activeSprite: {fileID: 0}
+  tileStart: {fileID: 0}
+  tileMiddle: {fileID: 0}
+  tileEnd: {fileID: 0}
+  maxCount: -1
+  buildCost:
+  - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+    amount: 20
+    chance: 1
+  - item: {fileID: 11400000, guid: 7159892eb7cf8fa41892075218a83164, type: 2}
+    amount: 30
+    chance: 1
+  gameOverWhenDestroyed: 0
+  capacity: 0
+  villagersCanEnter: 1
+  soldiersCanEnter: 1
+  priestsCanEnter: 1
+  doorOffset: {x: 0, y: -0.35}
+  inventorySlots: 3
+  slotCapacity: 30
+  perchOffset: {x: 0, y: 2.3}
+  mannedHealthBonus: 500
+  archerRangeMultiplier: 2
+  archeryBonusPerStep: 1
+  archeryBonusMax: 5
+  archeryBonusInterval: 60
+  healCost: 20
+  indulgenceCost: 10
+  randomSkillCost: 1000
+  unlocksPriest: 0
+  allowsClassChange: 0
+  furnaceInputA: {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
+  furnaceInputAAmount: 1
+  furnaceInputB: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+  furnaceInputBAmount: 3
+  furnaceOutput: {fileID: 11400000, guid: 6669335e14754394cb37c774b5981891, type: 2}
+  furnaceOutputAmount: 1
+  furnaceSeconds: 8
+  smokeFrames:
+  - {fileID: -3938067102993155475, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
+  - {fileID: -2814413885907626888, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
+  - {fileID: 511644010118226858, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
+  - {fileID: 5573429324852406649, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
+  - {fileID: -437083963760578091, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
+  - {fileID: 5397500908387719711, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
+  - {fileID: -7625881852923091777, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
+  - {fileID: -1636112882996861530, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
+  smokeHeight: 3
+  smokeOffset: {x: 0.15, y: 1.3}
+  smokeInterval: 0.35
+  smokeLifetime: 2.4
+  smokeScale: 0.8
+  isBridge: 0
+  mineOutput: {fileID: 0}
+  mineInterval: 5
+  mineReserve: 500
+  buildingDataVersion: 2

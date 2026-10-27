@@ -1,0 +1,128 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc00b9b52253603449d73501ff072d07, type: 3}
+  m_Name: BridgeHorizontal
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.BuildingDefinition
+  displayName: Bridge (horizontal)
+  kind: 16
+  frames:
+  - {fileID: 1142725679, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+  animate: 0
+  animationFps: 10
+  prefabOverride: {fileID: 0}
+  visualScale: 1
+  footprint: {x: 3, y: 1}
+  groundInset: 0
+  blocksBuilding: 1
+  walkThrough: 1
+  walkThroughSpeed: 1
+  hitboxSize: {x: 0.6, y: 0.4}
+  hitboxOffset: {x: 0, y: -0.1}
+  fadeWhenHidingCharacter: 0
+  movementConfigured: 1
+  resourceType: 0
+  maxHealth: 2000
+  yieldAmount: 0
+  drops: []
+  stackSize: 1
+  damagedFrames: []
+  movableByCharacters: 0
+  interactionTool: 0
+  dataVersion: 2
+  stump: {fileID: 0}
+  buildingType: 6
+  description: Makes water walkable. Joins other bridges end to end. Three building
+    / destroyed stages of 500 health.
+  menuIcon: {fileID: 0}
+  finishedScale: 1
+  centerOnFootprint: 1
+  drawUnderCharacters: 1
+  constructionStages:
+  - sprite: {fileID: 537900410, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+    scale: 1
+    groundInset: 0
+    belowHealth: 500
+    repeatPerCell: 1
+  - sprite: {fileID: -1186231441, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+    scale: 1
+    groundInset: 0
+    belowHealth: 1000
+    repeatPerCell: 1
+  - sprite: {fileID: -1273934610, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+    scale: 1
+    groundInset: 0
+    belowHealth: 1500
+    repeatPerCell: 1
+  destroyedStages:
+  - sprite: {fileID: 537900410, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+    scale: 1
+    groundInset: 0
+    belowHealth: 500
+    repeatPerCell: 1
+  - sprite: {fileID: -1186231441, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+    scale: 1
+    groundInset: 0
+    belowHealth: 1000
+    repeatPerCell: 1
+  - sprite: {fileID: -1273934610, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+    scale: 1
+    groundInset: 0
+    belowHealth: 1500
+    repeatPerCell: 1
+  destroyedHealth: 1500
+  spawnDestroyed: 0
+  activeSprite: {fileID: 0}
+  tileStart: {fileID: 25483021, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+  tileMiddle: {fileID: 535881750, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+  tileEnd: {fileID: 89974545, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
+  maxCount: -1
+  buildCost:
+  - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+    amount: 20
+    chance: 1
+  gameOverWhenDestroyed: 0
+  capacity: 0
+  villagersCanEnter: 1
+  soldiersCanEnter: 1
+  priestsCanEnter: 1
+  doorOffset: {x: 0, y: -0.35}
+  inventorySlots: 0
+  slotCapacity: 100
+  perchOffset: {x: 0, y: 2.3}
+  mannedHealthBonus: 500
+  archerRangeMultiplier: 2
+  archeryBonusPerStep: 1
+  archeryBonusMax: 5
+  archeryBonusInterval: 60
+  healCost: 20
+  indulgenceCost: 10
+  randomSkillCost: 1000
+  unlocksPriest: 0
+  allowsClassChange: 0
+  furnaceInputA: {fileID: 0}
+  furnaceInputAAmount: 1
+  furnaceInputB: {fileID: 0}
+  furnaceInputBAmount: 3
+  furnaceOutput: {fileID: 0}
+  furnaceOutputAmount: 1
+  furnaceSeconds: 8
+  smokeFrames: []
+  smokeHeight: 3
+  smokeOffset: {x: 0.2, y: 1.4}
+  smokeInterval: 0.35
+  smokeLifetime: 2.4
+  smokeScale: 0.8
+  isBridge: 1
+  mineOutput: {fileID: 0}
+  mineInterval: 5
+  mineReserve: 500
+  buildingDataVersion: 2

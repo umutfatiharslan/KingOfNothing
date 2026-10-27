@@ -56,7 +56,7 @@ namespace KingOfNothing.Units
         void OnDestroy()
         {
             if (instance == this) instance = null;
-            foreach (var state in fading.Values) SetAlpha(state.Target, 1f);
+            foreach (var state in fading.Values) if (state.Target != null) SetAlpha(state.Target, state.Target.BaseAlpha);
         }
 
         /// <summary>Solid objects whose hitboxes are active for this character (within the interaction radius).</summary>
@@ -102,6 +102,8 @@ namespace KingOfNothing.Units
                 }
                 solids.Clear();
                 seen.Clear();
+                // Inside a building or on top of a tower: no collisions, nothing fades for it
+                if (unit.IsHidden || unit.IsPerched) continue;
 
                 Vector2 feet = unit.transform.position;
                 var center = MapData.WorldToCell(feet);
@@ -123,8 +125,9 @@ namespace KingOfNothing.Units
         /// <summary>The character is inside the object, or right behind it and covered by its sprite.</summary>
         static bool HidesCharacter(WorldObject o, Vector2 feet, Rect bodyRect)
         {
-            var bounds = o.VisualBounds;
-            var visual = new Rect(bounds.min.x, bounds.min.y, bounds.size.x, bounds.size.y);
+            // Only the visible pixels count (not the transparent border of the image), so a building fades as soon
+            // as the character is right behind it and not while the character is still far behind it
+            var visual = o.VisiblePixels;
             if (!visual.Overlaps(bodyRect)) return false;
             bool inside = o.Area.Contains(Vector2Int.FloorToInt(feet));
             bool behind = feet.y > o.GroundPoint.y; // drawn behind the object (sorting by ground point)
@@ -135,7 +138,7 @@ namespace KingOfNothing.Units
         {
             if (!fading.TryGetValue(o, out var state))
             {
-                state = new FadeState { Target = o };
+                state = new FadeState { Target = o, Alpha = o.BaseAlpha };
                 fading[o] = state;
             }
             state.HidesCharacter = true;
@@ -153,13 +156,14 @@ namespace KingOfNothing.Units
                     finished.Add(pair.Key);
                     continue;
                 }
-                float wanted = state.HidesCharacter ? settings.occludedAlpha : 1f;
+                float baseAlpha = state.Target.BaseAlpha;
+                float wanted = state.HidesCharacter ? settings.occludedAlpha * baseAlpha : baseAlpha;
                 if (!Mathf.Approximately(state.Alpha, wanted))
                 {
                     state.Alpha = Mathf.MoveTowards(state.Alpha, wanted, step);
                     SetAlpha(state.Target, state.Alpha);
                 }
-                if (!state.HidesCharacter && Mathf.Approximately(state.Alpha, 1f)) finished.Add(pair.Key);
+                if (!state.HidesCharacter && Mathf.Approximately(state.Alpha, baseAlpha)) finished.Add(pair.Key);
             }
             foreach (var o in finished) fading.Remove(o);
         }

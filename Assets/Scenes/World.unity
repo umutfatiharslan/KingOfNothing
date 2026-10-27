@@ -190,6 +190,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 65b8ab757ba4b464fb2322436dfa0a09, type: 2}
   movement: {fileID: 0}
   interaction: {fileID: 0}
+  gameplay: {fileID: 11400000, guid: b9a3f5406d33b9b4396a5926852a996c, type: 2}
   savedTerrain: 
   savedBiomes: 
 --- !u!4 &429246045
@@ -569,10 +570,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5e76cc39d47395479511688bdf73438, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.Units.SelectionManager
-  dragThreshold: 6
   formationSpacing: 0.8
-  boxFill: {r: 0.35, g: 0.85, b: 1, a: 0.15}
-  boxBorder: {r: 0.35, g: 0.85, b: 1, a: 0.9}
+  unitBoxFill: {r: 0.35, g: 0.85, b: 1, a: 0.15}
+  unitBoxBorder: {r: 0.35, g: 0.85, b: 1, a: 0.9}
+  formationMarkerColor: {r: 0.45, g: 1, b: 0.45, a: 0.8}
 --- !u!4 &1713127251
 Transform:
   m_ObjectHideFlags: 0

@@ -16,6 +16,8 @@ namespace KingOfNothing.World.Persistence
         Health,
         /// <summary>The amount of a dropped pile changed (more items fell on it).</summary>
         Amount,
+        /// <summary>The extra state of an object changed (a building was completed, its inventory changed).</summary>
+        State,
     }
 
     /// <summary>
@@ -45,6 +47,10 @@ namespace KingOfNothing.World.Persistence
         public int amount;
         [Tooltip("Amount only: items before the change.")]
         public int previousAmount;
+        [Tooltip("Extra state of the object (buildings: completion and inventory). State: after the change.")]
+        public string state;
+        [Tooltip("State only: the state before the change.")]
+        public string previousState;
     }
 
     /// <summary>
@@ -80,5 +86,14 @@ namespace KingOfNothing.World.Persistence
         [Tooltip("How many actions of the history are applied (the rest can be redone).")]
         public int appliedCount;
         public List<MapChangeAction> history = new List<MapChangeAction>();
+        [Tooltip("State of objects that undo / redo do not touch (the items stored in buildings), by object id.")]
+        public List<KeptObjectState> keptStates = new List<KeptObjectState>();
+    }
+
+    [Serializable]
+    public class KeptObjectState
+    {
+        public int uid;
+        public string state;
     }
 }

@@ -47,6 +47,9 @@ namespace KingOfNothing.Units
             cam = Camera.main;
             commands = GetComponent<ObjectCommandController>();
             if (commands == null) commands = gameObject.AddComponent<ObjectCommandController>();
+            // Build menu, building windows and the day counter live next to the selection
+            if (GetComponent<BuildMenuController>() == null) gameObject.AddComponent<BuildMenuController>();
+            if (GetComponent<BuildingWindows>() == null) gameObject.AddComponent<BuildingWindows>();
         }
 
         void OnDestroy()
@@ -67,7 +70,7 @@ namespace KingOfNothing.Units
             bool shift = keyboard != null && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
             bool ctrl = keyboard != null && (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed);
             // Developer tools / the actions menu / panels own the mouse
-            bool blocked = DevInteractionController.CapturesMouse || ObjectCommandController.CapturesMouse ||
+            bool blocked = DevInteractionController.CapturesMouse || ObjectCommandController.CapturesMouse || BuildMenuController.CapturesMouse ||
                            (GameModeManager.IsDeveloperMode && ctrl) || ScreenUi.IsPointerOver(screen);
 
             UpdateLeft(mouse, screen, shift, blocked);
@@ -140,6 +143,7 @@ namespace KingOfNothing.Units
             ObjectSelection.Clear();
             foreach (var unit in Unit.All)
             {
+                if (unit.IsHidden) continue;
                 // Selected if the middle of the body (a bit above the feet) is inside the box
                 Vector2 point = cam.WorldToScreenPoint(unit.transform.position + Vector3.up * 0.5f);
                 if (rect.Contains(point)) Select(unit);
@@ -163,7 +167,7 @@ namespace KingOfNothing.Units
             unit.SetSelected(true);
         }
 
-        void Deselect(Unit unit)
+        public void Deselect(Unit unit)
         {
             selected.Remove(unit);
             unit.SetSelected(false);
@@ -202,8 +206,11 @@ namespace KingOfNothing.Units
             }
 
             Vector2 world = cam.ScreenToWorldPoint(screen);
+            // A character on a tower or with loot in its hands has its own menu
+            var clickedUnit = UnitAt(world);
+            if (clickedUnit != null && commands.OpenUnitMenu(clickedUnit, screen)) return;
             var target = ObjectPicker.Pick(MapData.Instance, world);
-            if (target != null && (selected.Count > 0 || GameModeManager.IsDeveloperMode))
+            if (target != null && (selected.Count > 0 || GameModeManager.IsDeveloperMode || target is KingOfNothing.World.Buildings.Building))
             {
                 commands.OpenMenu(target, screen, selected);
                 return;

@@ -19,8 +19,32 @@ namespace KingOfNothing.Units
             public InteractionTool tool;
             public Sprite[] idle = new Sprite[0];
             public Sprite[] run = new Sprite[0];
-            [Tooltip("One swing (Pawn_Interact <tool>); played once per hit.")]
+            [Tooltip("One swing (Pawn_Interact <tool>); played once per hit. For weapons: the attack towards the side.")]
             public Sprite[] interact = new Sprite[0];
+            [Tooltip("Optional second swing, used every other hit (Warrior_Attack2). Empty = always the first one.")]
+            public Sprite[] interactAlternate = new Sprite[0];
+            [Tooltip("Optional swings by direction (Lancer). Empty = the side swing is used.")]
+            public Sprite[] interactUp = new Sprite[0];
+            public Sprite[] interactUpSide = new Sprite[0];
+            public Sprite[] interactDown = new Sprite[0];
+            public Sprite[] interactDownSide = new Sprite[0];
+
+            /// <summary>Swing frames for a direction (x sign is handled by flipping the sprite).</summary>
+            public Sprite[] InteractFor(Vector2 direction, bool alternate)
+            {
+                if (direction.sqrMagnitude > 0.0001f)
+                {
+                    float angle = Mathf.Atan2(direction.y, Mathf.Abs(direction.x)) * Mathf.Rad2Deg; // -90 (down) .. 90 (up)
+                    Sprite[] directional = null;
+                    if (angle > 67.5f) directional = interactUp;
+                    else if (angle > 22.5f) directional = interactUpSide;
+                    else if (angle < -67.5f) directional = interactDown;
+                    else if (angle < -22.5f) directional = interactDownSide;
+                    if (directional != null && directional.Length > 0) return directional;
+                }
+                if (alternate && interactAlternate != null && interactAlternate.Length > 0) return interactAlternate;
+                return interact;
+            }
         }
 
         [Header("Basic")]
@@ -63,7 +87,7 @@ namespace KingOfNothing.Units
         }
 
 #if UNITY_EDITOR
-        public void EditorSetTool(InteractionTool tool, Sprite[] idleFrames, Sprite[] runFrames, Sprite[] interactFrames)
+        public ToolAnimations EditorSetTool(InteractionTool tool, Sprite[] idleFrames, Sprite[] runFrames, Sprite[] interactFrames)
         {
             var entry = ForTool(tool);
             if (entry == null)
@@ -74,6 +98,7 @@ namespace KingOfNothing.Units
             entry.idle = idleFrames;
             entry.run = runFrames;
             entry.interact = interactFrames;
+            return entry;
         }
 #endif
     }

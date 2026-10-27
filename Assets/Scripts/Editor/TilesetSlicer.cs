@@ -95,6 +95,64 @@ namespace KingOfNothing.EditorTools
             importer.SaveAndReimport();
         }
 
+        /// <summary>
+        /// Slices a texture into named sprites with the given pixel rects (Unity coordinates: y from the bottom),
+        /// unless it already has exactly these sprites. Returns the sprites by name.
+        /// </summary>
+        public static Dictionary<string, Sprite> EnsureNamedSlices(string texturePath, IList<(string name, RectInt rect)> slices)
+        {
+            var result = new Dictionary<string, Sprite>();
+            var importer = AssetImporter.GetAtPath(texturePath) as TextureImporter;
+            if (importer == null)
+            {
+                Debug.LogWarning("Texture not found: " + texturePath);
+                return result;
+            }
+            var existing = AssetDatabase.LoadAllAssetsAtPath(texturePath).OfType<Sprite>().ToList();
+            bool sliced = importer.spriteImportMode == SpriteImportMode.Multiple &&
+                          slices.All(sl => existing.Any(sp => sp.name == sl.name && Mathf.RoundToInt(sp.rect.x) == sl.rect.x &&
+                                                                 Mathf.RoundToInt(sp.rect.y) == sl.rect.y &&
+                                                                 Mathf.RoundToInt(sp.rect.width) == sl.rect.width &&
+                                                                 Mathf.RoundToInt(sp.rect.height) == sl.rect.height));
+            if (!sliced)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Multiple;
+                importer.spritePixelsPerUnit = 64;
+                importer.filterMode = FilterMode.Point;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+
+                var factory = new SpriteDataProviderFactories();
+                factory.Init();
+                var provider = factory.GetSpriteEditorDataProviderFromObject(importer);
+                provider.InitSpriteEditorDataProvider();
+                // Sprites that already exist keep their id, so references to them (building assets) stay valid
+                var old = provider.GetSpriteRects() ?? new SpriteRect[0];
+                var rects = slices.Select(sl =>
+                {
+                    var previous = old.FirstOrDefault(o => o.name == sl.name);
+                    return new SpriteRect
+                    {
+                        name = sl.name,
+                        rect = new Rect(sl.rect.x, sl.rect.y, sl.rect.width, sl.rect.height),
+                        alignment = SpriteAlignment.Center,
+                        pivot = new Vector2(0.5f, 0.5f),
+                        spriteID = previous != null ? previous.spriteID : GUID.Generate(),
+                    };
+                }).ToArray();
+                provider.SetSpriteRects(rects);
+                var names = provider.GetDataProvider<ISpriteNameFileIdDataProvider>();
+                names?.SetNameFileIdPairs(rects.Select(r => new SpriteNameFileIdPair(r.name, r.spriteID)));
+                provider.Apply();
+                importer.SaveAndReimport();
+            }
+            foreach (var sprite in AssetDatabase.LoadAllAssetsAtPath(texturePath).OfType<Sprite>())
+                result[sprite.name] = sprite;
+            return result;
+        }
+
         public static void EnsureFolder(string folder)
         {
             if (AssetDatabase.IsValidFolder(folder)) return;

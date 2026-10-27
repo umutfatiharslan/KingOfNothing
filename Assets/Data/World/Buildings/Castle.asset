@@ -1,0 +1,113 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc00b9b52253603449d73501ff072d07, type: 3}
+  m_Name: Castle
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.BuildingDefinition
+  displayName: Castle
+  kind: 16
+  frames:
+  - {fileID: 21300000, guid: 5fef2d88b09824faba4be40a870c347e, type: 3}
+  animate: 0
+  animationFps: 10
+  prefabOverride: {fileID: 0}
+  visualScale: 1
+  footprint: {x: 5, y: 3}
+  groundInset: 0.11
+  blocksBuilding: 1
+  walkThrough: 0
+  walkThroughSpeed: 1
+  hitboxSize: {x: 4.7, y: 2.6}
+  hitboxOffset: {x: 0, y: -0.15}
+  fadeWhenHidingCharacter: 1
+  movementConfigured: 1
+  resourceType: 0
+  maxHealth: 10000
+  yieldAmount: 0
+  drops: []
+  stackSize: 1
+  damagedFrames: []
+  movableByCharacters: 0
+  interactionTool: 0
+  dataVersion: 2
+  stump: {fileID: 0}
+  buildingType: 0
+  description: Main keep. Only one; the game is over when it is gone.
+  menuIcon: {fileID: 0}
+  finishedScale: 1
+  centerOnFootprint: 0
+  drawUnderCharacters: 0
+  constructionStages:
+  - sprite: {fileID: 21300000, guid: 3fcc4bd4f65f22446a2c45960ef46f57, type: 3}
+    scale: 1
+    groundInset: 0.14
+    belowHealth: 4000
+    repeatPerCell: 0
+  destroyedStages:
+  - sprite: {fileID: 21300000, guid: e6d1069928921704bb98972874ebab38, type: 3}
+    scale: 1
+    groundInset: 0.03
+    belowHealth: 2147483647
+    repeatPerCell: 0
+  destroyedHealth: 4000
+  spawnDestroyed: 0
+  activeSprite: {fileID: 0}
+  tileStart: {fileID: 0}
+  tileMiddle: {fileID: 0}
+  tileEnd: {fileID: 0}
+  maxCount: 1
+  buildCost:
+  - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+    amount: 200
+    chance: 1
+  - item: {fileID: 11400000, guid: 7159892eb7cf8fa41892075218a83164, type: 2}
+    amount: 150
+    chance: 1
+  - item: {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
+    amount: 30
+    chance: 1
+  gameOverWhenDestroyed: 1
+  capacity: -1
+  villagersCanEnter: 1
+  soldiersCanEnter: 1
+  priestsCanEnter: 1
+  doorOffset: {x: 0, y: -0.35}
+  inventorySlots: 9
+  slotCapacity: 100
+  perchOffset: {x: 0, y: 2.3}
+  mannedHealthBonus: 500
+  archerRangeMultiplier: 2
+  archeryBonusPerStep: 1
+  archeryBonusMax: 5
+  archeryBonusInterval: 60
+  healCost: 20
+  indulgenceCost: 10
+  randomSkillCost: 1000
+  unlocksPriest: 0
+  allowsClassChange: 0
+  furnaceInputA: {fileID: 0}
+  furnaceInputAAmount: 1
+  furnaceInputB: {fileID: 0}
+  furnaceInputBAmount: 3
+  furnaceOutput: {fileID: 0}
+  furnaceOutputAmount: 1
+  furnaceSeconds: 8
+  smokeFrames: []
+  smokeHeight: 3
+  smokeOffset: {x: 0.2, y: 1.4}
+  smokeInterval: 0.35
+  smokeLifetime: 2.4
+  smokeScale: 0.8
+  isBridge: 0
+  mineOutput: {fileID: 0}
+  mineInterval: 5
+  mineReserve: 500
+  buildingDataVersion: 2

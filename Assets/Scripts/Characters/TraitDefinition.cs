@@ -43,6 +43,10 @@ namespace KingOfNothing.Characters
         [Tooltip("Morale change per second while active.")]
         [SerializeField] float moraleDrainPerSecond;
 
+        [Header("Special")]
+        [Tooltip("Fear of heights: an archer with this trait is useless on an archer tower (no shots, no tower bonuses).")]
+        [SerializeField] bool uselessOnTowers;
+
         public string DisplayName => displayName;
         public string Description => description;
         public string FlavorText => flavorText;
@@ -53,6 +57,7 @@ namespace KingOfNothing.Characters
         public float WorkSpeedMultiplier => workSpeedMultiplier;
         public float MoveSpeedMultiplier => moveSpeedMultiplier;
         public float MoraleDrainPerSecond => moraleDrainPerSecond;
+        public bool UselessOnTowers => uselessOnTowers;
 
         /// <summary>Called once when the trait becomes visible.</summary>
         public virtual void OnRevealed(Villager villager) { }
@@ -80,6 +85,8 @@ namespace KingOfNothing.Characters
             moveSpeedMultiplier = moveSpeed;
             moraleDrainPerSecond = moraleDrain;
         }
+
+        public void EditorSetUselessOnTowers(bool value) => uselessOnTowers = value;
 #endif
     }
 }

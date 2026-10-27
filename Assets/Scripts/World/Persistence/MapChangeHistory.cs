@@ -116,6 +116,13 @@ namespace KingOfNothing.World.Persistence
                         applying = false;
                     }
                     setup.Map.NextUid = Mathf.Max(setup.Map.NextUid, data.nextUid);
+                    // Stored items and other kept states (not part of the undo history)
+                    if (data.keptStates != null)
+                        foreach (var kept in data.keptStates)
+                        {
+                            var o = kept != null ? setup.Map.FindObject(kept.uid) : null;
+                            if (o != null) o.LoadKeptState(kept.state);
+                        }
                     result = $"edited map loaded: {data.appliedCount} actions" +
                              (data.history.Count > data.appliedCount ? $" (+{data.history.Count - data.appliedCount} undone)" : "") +
                              (failed > 0 ? $", {failed} changes could not be applied" : "");
@@ -137,6 +144,8 @@ namespace KingOfNothing.World.Persistence
             WorldObject.AnyRemoving += OnRemoving;
             WorldObject.AnyMoved += OnMoved;
             WorldObject.AnyAmountChanged += OnAmountChanged;
+            WorldObject.AnyStateChanged += OnStateChanged;
+            WorldObject.AnyKeptStateChanged += OnKeptStateChanged;
             ResourceNode.AnyHealthChanged += OnHealthChanged;
             subscribed = true;
         }
@@ -148,6 +157,8 @@ namespace KingOfNothing.World.Persistence
             WorldObject.AnyRemoving -= OnRemoving;
             WorldObject.AnyMoved -= OnMoved;
             WorldObject.AnyAmountChanged -= OnAmountChanged;
+            WorldObject.AnyStateChanged -= OnStateChanged;
+            WorldObject.AnyKeptStateChanged -= OnKeptStateChanged;
             ResourceNode.AnyHealthChanged -= OnHealthChanged;
             subscribed = false;
         }
@@ -190,7 +201,25 @@ namespace KingOfNothing.World.Persistence
             var change = Snapshot(MapChangeType.Health, node);
             change.previousHealth = before;
             change.health = after;
-            Add(change, $"Hit {node.DisplayName}", node.Uid);
+            bool building = node.Definition is BuildingDefinition;
+            string label = building ? (after > before ? $"Build {node.DisplayName}" : $"Damage {node.DisplayName}") : $"Hit {node.DisplayName}";
+            Add(change, label, node.Uid);
+        }
+
+        /// <summary>Stored items changed: nothing goes into the history, the file just has to be written again.</summary>
+        void OnKeptStateChanged(WorldObject o)
+        {
+            if (!Tracks(o)) return;
+            MarkDirty();
+        }
+
+        void OnStateChanged(WorldObject o, string before, string after)
+        {
+            if (!Tracks(o)) return;
+            var change = Snapshot(MapChangeType.State, o);
+            change.previousState = before;
+            change.state = after;
+            Add(change, $"{o.DisplayName} changed", o.Uid);
         }
 
         static MapChange Snapshot(MapChangeType type, WorldObject o)
@@ -207,6 +236,7 @@ namespace KingOfNothing.World.Persistence
                 offset = o.Offset,
                 health = o is ResourceNode node ? node.Health : 0,
                 amount = o.Amount,
+                state = o.SaveState(),
             };
         }
 
@@ -226,13 +256,14 @@ namespace KingOfNothing.World.Persistence
         /// </summary>
         static void AppendCompact(List<MapChange> changes, MapChange change)
         {
-            if ((change.type == MapChangeType.Health || change.type == MapChangeType.Amount) && changes.Count > 0)
+            if ((change.type == MapChangeType.Health || change.type == MapChangeType.Amount || change.type == MapChangeType.State) && changes.Count > 0)
             {
                 var last = changes[changes.Count - 1];
                 if (last.type == change.type && last.uid == change.uid)
                 {
                     last.health = change.health;
                     last.amount = change.amount;
+                    last.state = change.state;
                     return;
                 }
             }
@@ -380,6 +411,13 @@ namespace KingOfNothing.World.Persistence
                     node.SetHealth(forward ? c.health : c.previousHealth, false);
                     return true;
                 }
+                case MapChangeType.State:
+                {
+                    var o = setup.Map.FindObject(c.uid);
+                    if (o == null) return false;
+                    o.LoadState(forward ? c.state : c.previousState);
+                    return true;
+                }
             }
             return false;
         }
@@ -399,10 +437,13 @@ namespace KingOfNothing.World.Persistence
             var linked = string.IsNullOrEmpty(c.linkedId) ? null : setup.Resolve(c.linkedId);
             int health = c.health;
             int amount = Mathf.Max(1, c.amount);
+            string state = c.state;
             var created = WorldObjectFactory.Create(definition, c.cell, c.offset, setup.Parent(), setup.Map, c.uid, o =>
             {
                 if (linked != null) o.SetLinkedDefinition(linked);
                 o.Amount = amount;
+                // State first: it can change the maximum health (a destroyed building has its own health bar)
+                if (!string.IsNullOrEmpty(state)) o.LoadState(state);
                 if (o is ResourceNode node) node.SetHealth(health, false);
             });
             return created != null;
@@ -415,11 +456,28 @@ namespace KingOfNothing.World.Persistence
         {
             CommitOpen();
             dirty = false;
-            if (data.history.Count == 0 && !setup.File.Exists) return;
+            if (data.history.Count == 0 && !setup.File.Exists && !AnyKeptState()) return;
             data.nextUid = setup.Map != null ? setup.Map.NextUid : data.nextUid;
+            if (setup.Map != null)
+            {
+                data.keptStates = new List<KeptObjectState>();
+                foreach (var o in setup.Map.AllObjects)
+                {
+                    string kept = o.SaveKeptState();
+                    if (!string.IsNullOrEmpty(kept)) data.keptStates.Add(new KeptObjectState { uid = o.Uid, state = kept });
+                }
+            }
             data.width = setup.Map != null ? setup.Map.Width : data.width;
             data.height = setup.Map != null ? setup.Map.Height : data.height;
             setup.File.Write(data);
+        }
+
+        bool AnyKeptState()
+        {
+            if (setup.Map == null) return false;
+            foreach (var o in setup.Map.AllObjects)
+                if (!string.IsNullOrEmpty(o.SaveKeptState())) return true;
+            return false;
         }
 
         /// <summary>Deletes the edited map file and forgets the history (the caller rebuilds the original objects).</summary>

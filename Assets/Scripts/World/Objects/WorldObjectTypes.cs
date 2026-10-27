@@ -22,6 +22,8 @@ namespace KingOfNothing.World.Objects
         Item,
         Scarecrow,
         Grass,
+        /// <summary>Built by the player (castle, houses, tower, bridge, furnace...). See BuildingDefinition.</summary>
+        Building,
     }
 
     /// <summary>Tool a pawn works an object with (decides the animation). Auto = chosen from the object kind.</summary>
@@ -32,6 +34,14 @@ namespace KingOfNothing.World.Objects
         Pickaxe,
         Knife,
         Hammer,
+        /// <summary>Warrior (Warrior_Attack1 / 2).</summary>
+        Sword,
+        /// <summary>Lancer (Lancer_*_Attack, one sheet per direction).</summary>
+        Spear,
+        /// <summary>Archer (Archer_Shoot).</summary>
+        Bow,
+        /// <summary>Monk (Heal).</summary>
+        Heal,
     }
 
     public static class InteractionTools
@@ -76,6 +86,8 @@ namespace KingOfNothing.World.Objects
         Pumpkin,
         Mushroom,
         Bone,
+        /// <summary>Made by the furnace from gold and wood (Icon_03).</summary>
+        GoldCoin,
     }
 
     /// <summary>Anything that can be hit by a worker, a soldier or the developer mouse.</summary>

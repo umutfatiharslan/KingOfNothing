@@ -21,7 +21,8 @@ MonoBehaviour:
   characterCollisionRadius: 0.2
   characterBodySize: {x: 0.6, y: 1.1}
   stuckRepathTime: 0.75
-  occludedAlpha: 0.5
+  occludedAlpha: 0.75
   fadeSpeed: 6
   showHitboxes: 0
   hitboxColor: {r: 1, g: 0.3, b: 0.2, a: 0.9}
+  dataVersion: 1

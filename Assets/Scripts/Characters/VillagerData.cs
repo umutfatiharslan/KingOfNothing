@@ -12,6 +12,29 @@ namespace KingOfNothing.Characters
         Warrior,
         Priest,
         King,
+        Lancer,
+    }
+
+    public static class VillagerRoles
+    {
+        /// <summary>Warrior, lancer and archer: they attack, they do not work.</summary>
+        public static bool IsSoldier(VillagerRole role) => role == VillagerRole.Warrior || role == VillagerRole.Lancer || role == VillagerRole.Archer;
+
+        /// <summary>Villagers (and the king) chop, mine, build and repair.</summary>
+        public static bool IsWorker(VillagerRole role) => role == VillagerRole.Villager || role == VillagerRole.King;
+
+        /// <summary>Weapon (attack animation) of a soldier class; Auto for the others.</summary>
+        public static KingOfNothing.World.Objects.InteractionTool WeaponFor(VillagerRole role)
+        {
+            switch (role)
+            {
+                case VillagerRole.Warrior: return KingOfNothing.World.Objects.InteractionTool.Sword;
+                case VillagerRole.Lancer: return KingOfNothing.World.Objects.InteractionTool.Spear;
+                case VillagerRole.Archer: return KingOfNothing.World.Objects.InteractionTool.Bow;
+                case VillagerRole.Priest: return KingOfNothing.World.Objects.InteractionTool.Heal;
+                default: return KingOfNothing.World.Objects.InteractionTool.Auto;
+            }
+        }
     }
 
     /// <summary>Who the character is: what the character book shows.</summary>

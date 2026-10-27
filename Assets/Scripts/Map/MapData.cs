@@ -27,6 +27,8 @@ namespace KingOfNothing.World
         [SerializeField] MovementSettings movement;
         [Tooltip("Hitting, carrying, drops, selection colours... Empty = Assets/Data/World/InteractionSettings (created automatically in the editor).")]
         [SerializeField] InteractionSettings interaction;
+        [Tooltip("Game day, construction, build menu, combat, class animations... Empty = Assets/Data/World/GameplaySettings (created automatically in the editor).")]
+        [SerializeField] GameplaySettings gameplay;
 
         // Only filled when the generator is told to keep its result in the scene
         [SerializeField, HideInInspector] byte[] savedTerrain;
@@ -41,6 +43,7 @@ namespace KingOfNothing.World
         [NonSerialized] Dictionary<int, List<WorldObject>> buried = new Dictionary<int, List<WorldObject>>();
         [NonSerialized] int nextUid = 1;
         [NonSerialized] bool interactionChecked;
+        [NonSerialized] bool movementChecked;
         /// <summary>Distance (cells) of every water cell to the nearest land; 0 on land.</summary>
         [NonSerialized] byte[] waterDepth;
         [NonSerialized] GridPathfinder pathfinder;
@@ -71,6 +74,18 @@ namespace KingOfNothing.World
             }
         }
 
+        /// <summary>Kingdom rules: day length, construction, buildings, combat (never null).</summary>
+        public GameplaySettings Gameplay
+        {
+            get
+            {
+#if UNITY_EDITOR
+                if (gameplay == null) gameplay = GameplaySettings.LoadOrCreateDefault();
+#endif
+                return gameplay != null ? gameplay : GameplaySettings.Fallback;
+            }
+        }
+
         /// <summary>Movement rules (never null).</summary>
         public MovementSettings Movement
         {
@@ -78,6 +93,11 @@ namespace KingOfNothing.World
             {
 #if UNITY_EDITOR
                 if (movement == null) movement = MovementSettings.LoadOrCreateDefault();
+                if (!movementChecked && movement != null)
+                {
+                    movementChecked = true;
+                    movement.EditorEnsureDefaults();
+                }
 #endif
                 return movement != null ? movement : MovementSettings.Fallback;
             }
@@ -250,11 +270,28 @@ namespace KingOfNothing.World
             if (terrain == null || !InBounds(cell)) return false;
             int i = Index(cell);
             if (terrain[i] == CellTerrain.Land) return true;
+            if (IsBridge(cell)) return true;
             var m = Movement;
             return m.deepWaterWalkable || waterDepth[i] <= m.wadeableWaterDepth;
         }
 
         public bool IsWalkable(Vector2 world) => IsWalkable(WorldToCell(world));
+
+        /// <summary>A finished bridge (or another object that makes its cells walkable) stands on the cell.</summary>
+        public bool IsBridge(Vector2Int cell)
+        {
+            var o = objects != null && InBounds(cell) ? objects[Index(cell)] : null;
+            return o != null && o.MakesGroundWalkable;
+        }
+
+        /// <summary>Walkability of these cells changed (a bridge was finished or destroyed): update the pathfinder.</summary>
+        public void RefreshCells(RectInt area)
+        {
+            if (pathfinder == null) return;
+            for (int y = area.yMin; y < area.yMax; y++)
+            for (int x = area.xMin; x < area.xMax; x++)
+                if (InBounds(new Vector2Int(x, y))) pathfinder.RefreshCell(x, y);
+        }
 
         /// <summary>
         /// Movement speed multiplier of a cell: biome speed on land (swamp 0.25), shallow water speed in water,
@@ -276,6 +313,7 @@ namespace KingOfNothing.World
             var biome = GetBiome(cell);
             float biomeSpeed = biome != null ? biome.MovementSpeedMultiplier : 1f;
             if (terrain[i] == CellTerrain.Land) return biomeSpeed;
+            if (IsBridge(cell)) return 1f;
             var m = Movement;
             float water = waterDepth[i] <= m.wadeableWaterDepth ? m.shallowWaterSpeed : m.deepWaterSpeed;
             // Pools inside a biome (swamp marsh) are never faster than the biome itself
@@ -424,6 +462,16 @@ namespace KingOfNothing.World
                 }
                 else list?.Remove(worldObject);
                 if (list != null && list.Count == 0) buried.Remove(i);
+            }
+        }
+
+        /// <summary>Every object on the map (by id).</summary>
+        public IEnumerable<WorldObject> AllObjects
+        {
+            get
+            {
+                foreach (var o in objectsByUid.Values)
+                    if (o != null) yield return o;
             }
         }
 

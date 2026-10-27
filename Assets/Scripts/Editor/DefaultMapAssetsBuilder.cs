@@ -68,6 +68,7 @@ namespace KingOfNothing.EditorTools
                 BuildNamePool();
                 BuildTraits();
                 BuildVillagerPrefab();
+                BuildGameplaySettings(s);
 
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
@@ -226,12 +227,16 @@ namespace KingOfNothing.EditorTools
             public SpawnableDefinition GoldMineActive, GoldMineInactive;
             // Items dropped by broken objects
             public SpawnableDefinition WoodResource, GoldResource, GoldResourceHighlight, PumpkinItem;
+            // Furnace output and the buildings of the build menu
+            public SpawnableDefinition GoldCoin;
+            public readonly List<BuildingDefinition> Buildings = new List<BuildingDefinition>();
 
             public IEnumerable<SpawnableDefinition> DeveloperExtras => new[]
             {
                 Signpost1, Signpost2, Scarecrow, Rock, RockOld1, RockOld2, SmallBushes[1], SmallBushes[2], SmallBushes[3],
                 Grass, GrassBig, GoldMineActive, GoldMineInactive, WoodResource, GoldResource, GoldResourceHighlight, PumpkinItem,
-            }.Where(x => x != null);
+                GoldCoin,
+            }.Concat(Buildings).Where(x => x != null);
         }
 
         /// <summary>
@@ -282,6 +287,25 @@ namespace KingOfNothing.EditorTools
             asset.EditorSetup(displayName, kind, Frames(spritePath), footprint, inset, animate, blocksBuilding, resource, health, yield);
             EditorUtility.SetDirty(asset);
             return asset;
+        }
+
+        /// <summary>
+        /// One-off fixes of small loot (applied once to existing assets): the gold coin is small enough for a pawn's
+        /// hand and lies in piles of 10 like wood; the smallest mushroom can be carried like other loot.
+        /// </summary>
+        static void FixLoot(Spawnables s)
+        {
+            if (s.GoldCoin != null && (overwrite || Mathf.Approximately(s.GoldCoin.VisualScale, 1f)))
+            {
+                s.GoldCoin.EditorSetVisualScale(0.35f);
+                s.GoldCoin.EditorSetStackSize(10);
+                EditorUtility.SetDirty(s.GoldCoin);
+            }
+            if (s.Mushrooms[1] != null && !s.Mushrooms[1].MovableByCharacters)
+            {
+                s.Mushrooms[1].EditorSetMovable(true);
+                EditorUtility.SetDirty(s.Mushrooms[1]);
+            }
         }
 
         /// <summary>Renames an object asset (keeps its GUID, so every reference stays valid).</summary>
@@ -414,8 +438,15 @@ namespace KingOfNothing.EditorTools
                 TS + "Pawn and Resources/Gold/Gold Resource/Gold_Resource_Highlight.png", one, 0.3f, true, false, ResourceType.Gold, 1, 1);
             s.PumpkinItem = Spawnable("PumpkinItem", "Small Pumpkin", WorldObjectKind.Item, Deco(12), one, 0.3f, false, false, ResourceType.Pumpkin, 1, 1);
 
+            s.GoldCoin = Spawnable("GoldCoin", "Gold Coin", WorldObjectKind.Item, TS + "UI Elements/Icons/Icon_03.png", one, 0.1f, false, false,
+                ResourceType.GoldCoin, 1, 1);
+
             ApplyMovementRules(s);
             ApplyGameplayTables(s);
+            Passable(s.GoldCoin);
+            Gameplay(s.GoldCoin, -1, true, 10, null, Drop(s.GoldCoin, 1));
+            FixLoot(s);
+            BuildBuildings(s);
             return s;
         }
 
@@ -486,7 +517,7 @@ namespace KingOfNothing.EditorTools
             Gameplay(pumpkin, -1, movable, 10, null, Drop(pumpkin, 1));
 
             // Mushrooms, pumpkins, grass
-            Gameplay(s.Mushrooms[1], -1, false, 10, null, Drop(mushroom, 1));
+            Gameplay(s.Mushrooms[1], -1, movable, 10, null, Drop(mushroom, 1));
             Gameplay(s.Mushrooms[2], 15, Drop(mushroom, 2));
             Gameplay(s.Mushrooms[3], 40, Drop(mushroom, 4));
             Gameplay(s.Pumpkins[1], 40, Drop(pumpkin, 1));
@@ -540,6 +571,415 @@ namespace KingOfNothing.EditorTools
             for (int n = 1; n <= 4; n++) Gameplay(s.WaterRocks[n], Mathf.Max(1, s.WaterRocks[n].MaxHealth));
             foreach (var mine in new[] { s.GoldMine, s.GoldMineActive, s.GoldMineInactive })
                 if (mine != null) Gameplay(mine, Mathf.Max(1, mine.MaxHealth));
+        }
+
+
+        // ================================================================== buildings
+
+        const string BuildingFolder = DataRoot + "/Buildings";
+        const string BlueBuildings = TS + "Buildings/Blue Buildings/";
+        const string OldBuildings = TSOld + "Factions/Knights/Buildings/";
+        const string BridgeSheet = TSOld + "Terrain/Bridge/Bridge_All.png";
+        const string ArrowSheet = TSOld + "Factions/Knights/Troops/Archer/Arrow/Arrow.png";
+        const string MineFolder = TSOld + "Resources/Gold Mine/";
+        /// <summary>
+        /// Version of the default building values (raise it when they change; older assets get them once).
+        /// 2: own destroyed health, costs, bridge tiles, gold mines. (3 is a small patch on top: houses for everybody.)
+        /// </summary>
+        const int BuildingDataVersion = 2;
+
+        static Sprite First(string path)
+        {
+            var frames = Frames(path);
+            return frames.Length > 0 ? frames[0] : null;
+        }
+
+        static BuildingStage Stage(Sprite sprite, int belowHealth, float scale = 1f, float inset = 0f, bool repeat = false) =>
+            new BuildingStage { sprite = sprite, belowHealth = belowHealth, scale = scale, groundInset = inset, repeatPerCell = repeat };
+
+        static List<DropEntry> Cost(Spawnables s, int wood, int stone = 0, int gold = 0)
+        {
+            var list = new List<DropEntry>();
+            if (wood > 0) list.Add(new DropEntry(s.WoodResource, wood));
+            if (stone > 0) list.Add(new DropEntry(s.Rock, stone));
+            if (gold > 0) list.Add(new DropEntry(s.GoldResource, gold));
+            return list;
+        }
+
+        /// <summary>
+        /// Fills a building asset with the defaults. Existing assets keep their Inspector values; they are only
+        /// filled when new, on overwrite, or when the defaults are newer than the asset.
+        /// </summary>
+        static bool Configure(BuildingDefinition asset, bool fresh, string displayName, WorldObjectKind kind, BuildingType type, Sprite finished,
+            Vector2Int footprint, float inset, int health, int destroyedHealth, Vector2 hitbox)
+        {
+            if (asset == null) return false;
+            if (!fresh && !overwrite && asset.EditorBuildingDataVersion >= BuildingDataVersion) return false;
+            asset.EditorSetup(displayName, kind, finished != null ? new[] { finished } : new Sprite[0], footprint, inset,
+                false, true, ResourceType.None, health, 0);
+            asset.EditorSetMovement(false, 1f, hitbox, new Vector2(0f, -WorldObjectFactory.BaseOffsetY), true);
+            asset.EditorSetGameplay(GameplayDataVersion, health, new List<DropEntry>(), 1, false, null);
+            asset.buildingType = type;
+            asset.destroyedHealth = destroyedHealth;
+            asset.EditorBuildingDataVersion = BuildingDataVersion;
+            asset.constructionStages = new List<BuildingStage>();
+            asset.destroyedStages = new List<BuildingStage>();
+            asset.buildCost = new List<DropEntry>();
+            EditorUtility.SetDirty(asset);
+            return true;
+        }
+
+        static BuildingDefinition BuildingAsset(string file, string displayName, BuildingType type, Sprite finished, Vector2Int footprint,
+            float inset, int health, int destroyedHealth, Vector2 hitbox, out bool configure)
+        {
+            var asset = LoadOrCreate<BuildingDefinition>($"{BuildingFolder}/{file}.asset", out bool fresh);
+            configure = Configure(asset, fresh, displayName, WorldObjectKind.Building, type, finished, footprint, inset, health, destroyedHealth, hitbox);
+            return asset;
+        }
+
+        /// <summary>
+        /// Turns an object asset into a building asset of the same file (gold mines): only the script reference
+        /// changes, the asset keeps its GUID, so the map, the spawn rules and the edited map still find it.
+        /// </summary>
+        static BuildingDefinition ConvertToBuilding(SpawnableDefinition asset)
+        {
+            if (asset == null) return null;
+            if (asset is BuildingDefinition already) return already;
+            string path = AssetDatabase.GetAssetPath(asset);
+            if (string.IsNullOrEmpty(path)) return null;
+            AssetDatabase.SaveAssets();
+            var temp = ScriptableObject.CreateInstance<BuildingDefinition>();
+            var script = MonoScript.FromScriptableObject(temp);
+            Object.DestroyImmediate(temp);
+            string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(script));
+            if (string.IsNullOrEmpty(guid)) return null;
+            string text = System.IO.File.ReadAllText(path);
+            string converted = System.Text.RegularExpressions.Regex.Replace(text,
+                @"m_Script: \{fileID: 11500000, guid: [0-9a-fA-F]+, type: 3\}", $"m_Script: {{fileID: 11500000, guid: {guid}, type: 3}}");
+            if (converted == text) return null;
+            System.IO.File.WriteAllText(path, converted);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            var result = AssetDatabase.LoadAssetAtPath<BuildingDefinition>(path);
+            if (result != null) Debug.Log($"[King of Nothing] {path} is now a building asset (gold mine).");
+            return result;
+        }
+
+        static void BuildBuildings(Spawnables s)
+        {
+            TilesetSlicer.EnsureFolder(BuildingFolder);
+            var castleConstruction = First(OldBuildings + "Castle/Castle_Construction.png");
+            var castleDestroyed = First(OldBuildings + "Castle/Castle_Destroyed.png");
+            var houseConstruction = First(OldBuildings + "House/House_Construction.png");
+            var houseDestroyed = First(OldBuildings + "House/House_Destroyed.png");
+            var towerConstruction = First(OldBuildings + "Tower/Tower_Construction.png");
+            var towerDestroyed = First(OldBuildings + "Tower/Tower_Destroyed.png");
+            const int Always = int.MaxValue; // destroyed look shown for the whole destroyed health
+
+            // Castle (main keep): only one, game over when it is gone, stores 9 items x 100, everybody can enter
+            var castle = BuildingAsset("Castle", "Castle", BuildingType.Castle, First(BlueBuildings + "Castle.png"), new Vector2Int(5, 3),
+                0.11f, 10000, 4000, new Vector2(4.7f, 2.6f), out bool c);
+            if (c)
+            {
+                castle.description = "Main keep. Only one; the game is over when it is gone.";
+                castle.constructionStages.Add(Stage(castleConstruction, 4000, 1f, 0.14f));
+                castle.destroyedStages.Add(Stage(castleDestroyed, Always, 1f, 0.03f));
+                castle.maxCount = 1;
+                castle.gameOverWhenDestroyed = true;
+                castle.capacity = -1;
+                castle.inventorySlots = 9;
+                castle.slotCapacity = 100;
+                castle.doorOffset = new Vector2(0f, -0.35f);
+                castle.buildCost = Cost(s, 200, 150, 30);
+            }
+
+            // Big buildings: House_Construction x1.5 while building, a small Castle_Destroyed (x0.6) when destroyed
+            BuildingDefinition Big(string file, string name, BuildingType type, string sprite, float inset, int health, Vector2 hitbox, out bool fresh)
+            {
+                var b = BuildingAsset(file, name, type, First(BlueBuildings + sprite), new Vector2Int(3, 2), inset, health, 2000, hitbox, out fresh);
+                if (fresh)
+                {
+                    b.constructionStages.Add(Stage(houseConstruction, 2000, 1.5f, 0.125f));
+                    b.destroyedStages.Add(Stage(castleDestroyed, Always, 0.6f, 0.03f));
+                }
+                return b;
+            }
+
+            var school = Big("School", "School", BuildingType.School, "Barracks.png", 0.17f, 5000, new Vector2(2.8f, 1.7f), out c);
+            if (c)
+            {
+                school.description = "Barracks: only villagers train here.";
+                school.capacity = 4;
+                school.soldiersCanEnter = false;
+                school.priestsCanEnter = false;
+                school.buildCost = Cost(s, 80, 40);
+            }
+            var army = Big("ArmyHouse", "Army House", BuildingType.ArmyHouse, "Archery.png", 0.25f, 5000, new Vector2(2.8f, 1.6f), out c);
+            if (c)
+            {
+                army.description = "Archery: soldier training and class changes (warrior, lancer, archer).";
+                army.capacity = 2;
+                army.priestsCanEnter = false;
+                army.allowsClassChange = true;
+                army.doorOffset = new Vector2(0.6f, -0.35f);
+                army.buildCost = Cost(s, 80, 40);
+            }
+            var church = Big("Church", "Church", BuildingType.Church, "Monastery.png", 0.16f, 7000, new Vector2(2.6f, 1.7f), out c);
+            if (c)
+            {
+                church.description = "Monastery: healing for gold coins; unlocks the priest.";
+                church.capacity = 4;
+                church.unlocksPriest = true;
+                church.healCost = 20;
+                church.indulgenceCost = 10;
+                church.randomSkillCost = 1000;
+                church.buildCost = Cost(s, 100, 60, 10);
+            }
+
+            // Villager houses: two villagers, 4 items
+            var houseDoors = new[] { new Vector2(0f, -0.35f), new Vector2(-0.6f, -0.35f), new Vector2(-1.15f, 0.35f) };
+            var houseInsets = new[] { 0.3f, 0.22f, 0.31f };
+            var houses = new List<BuildingDefinition>();
+            for (int n = 1; n <= 3; n++)
+            {
+                var house = BuildingAsset($"House{n}", $"House {n}", BuildingType.House, First(BlueBuildings + $"House{n}.png"), new Vector2Int(2, 2),
+                    houseInsets[n - 1], 3000, 1000, new Vector2(1.7f, 1.3f), out c);
+                if (c)
+                {
+                    house.description = n == 1 ? "Villager house, door to the south." : n == 2 ? "Villager house, door to the south-west." : "Villager house, door on the side.";
+                    house.constructionStages.Add(Stage(houseConstruction, 1000, 1f, 0.125f));
+                    house.destroyedStages.Add(Stage(houseDestroyed, Always, 1f, 0.41f));
+                    house.capacity = 2;
+                    house.inventorySlots = 4;
+                    house.slotCapacity = 100;
+                    house.doorOffset = houseDoors[n - 1];
+                    house.buildCost = Cost(s, 30, 10);
+                }
+                // Patch 3: every character can live in a house, whatever its profession
+                if (house.EditorBuildingDataVersion < 3)
+                {
+                    house.villagersCanEnter = true;
+                    house.soldiersCanEnter = true;
+                    house.priestsCanEnter = true;
+                    house.EditorBuildingDataVersion = 3;
+                    EditorUtility.SetDirty(house);
+                }
+                houses.Add(house);
+            }
+
+            // Archer tower: one character on top
+            var tower = BuildingAsset("Tower", "Archer Tower", BuildingType.Tower, First(BlueBuildings + "Tower.png"), new Vector2Int(2, 2),
+                0.41f, 6000, 3000, new Vector2(1.5f, 1.3f), out c);
+            if (c)
+            {
+                tower.description = "One archer on top: +500 health, range x2, archery +1 per minute (max +5).";
+                tower.constructionStages.Add(Stage(towerConstruction, 3000, 1f, 0.375f));
+                tower.destroyedStages.Add(Stage(towerDestroyed, Always, 1f, 0.41f));
+                tower.capacity = 1;
+                tower.perchOffset = new Vector2(0f, 2.05f);
+                tower.mannedHealthBonus = 500;
+                tower.archerRangeMultiplier = 2f;
+                tower.archeryBonusPerStep = 1;
+                tower.archeryBonusMax = 5;
+                tower.archeryBonusInterval = 60f;
+                tower.doorOffset = new Vector2(0f, -0.35f);
+                tower.buildCost = Cost(s, 60, 50);
+            }
+
+            // Bridges (Bridge_All): horizontal and vertical bridge, their end / middle tiles and three piles for building / destroyed
+            var bridgeSprites = TilesetSlicer.EnsureNamedSlices(BridgeSheet, new List<(string, RectInt)>
+            {
+                ("Bridge_Horizontal", new RectInt(0, 192, 192, 64)),
+                ("Bridge_Vertical", new RectInt(0, 0, 64, 192)),
+                ("Bridge_Stage1", new RectInt(64, 64, 64, 64)),
+                ("Bridge_Stage2", new RectInt(128, 128, 64, 64)),
+                ("Bridge_Stage3", new RectInt(64, 128, 64, 64)),
+                ("Bridge_H_Start", new RectInt(0, 192, 64, 64)),
+                ("Bridge_H_Middle", new RectInt(64, 192, 64, 64)),
+                ("Bridge_H_End", new RectInt(128, 192, 64, 64)),
+                ("Bridge_V_Start", new RectInt(0, 0, 64, 64)),
+                ("Bridge_V_Middle", new RectInt(0, 64, 64, 64)),
+                ("Bridge_V_End", new RectInt(0, 128, 64, 64)),
+            });
+            Sprite Slice(string name) => bridgeSprites.TryGetValue(name, out var sp) ? sp : null;
+            BuildingDefinition Bridge(string file, string name, string sprite, Vector2Int footprint, string tiles)
+            {
+                var b = BuildingAsset(file, name, BuildingType.Bridge, Slice(sprite), footprint, 0f, 2000, 1500, new Vector2(0.6f, 0.4f), out bool fresh);
+                if (fresh)
+                {
+                    b.description = "Makes water walkable. Joins other bridges end to end. Three building / destroyed stages of 500 health.";
+                    b.EditorSetMovement(true, 1f, new Vector2(0.6f, 0.4f), new Vector2(0f, -0.1f), false);
+                    b.isBridge = true;
+                    b.centerOnFootprint = true;
+                    b.drawUnderCharacters = true;
+                    b.capacity = 0;
+                    b.tileStart = Slice($"Bridge_{tiles}_Start");
+                    b.tileMiddle = Slice($"Bridge_{tiles}_Middle");
+                    b.tileEnd = Slice($"Bridge_{tiles}_End");
+                    foreach (var list in new[] { b.constructionStages, b.destroyedStages })
+                    {
+                        list.Add(Stage(Slice("Bridge_Stage1"), 500, 1f, 0f, true));
+                        list.Add(Stage(Slice("Bridge_Stage2"), 1000, 1f, 0f, true));
+                        list.Add(Stage(Slice("Bridge_Stage3"), 1500, 1f, 0f, true));
+                    }
+                    b.buildCost = Cost(s, 20);
+                    EditorUtility.SetDirty(b);
+                }
+                return b;
+            }
+            var bridgeH = Bridge("BridgeHorizontal", "Bridge (horizontal)", "Bridge_Horizontal", new Vector2Int(3, 1), "H");
+            var bridgeV = Bridge("BridgeVertical", "Bridge (vertical)", "Bridge_Vertical", new Vector2Int(1, 3), "V");
+
+            // Furnace (placeholder art: Avatars_16 at half size): 1 gold + 3 wood -> 1 gold coin
+            var furnace = BuildingAsset("Furnace", "Furnace", BuildingType.Furnace, First(TS + "UI Elements/Human Avatars/Avatars_16.png"),
+                new Vector2Int(2, 1), 0.67f, 1000, 300, new Vector2(1.4f, 0.8f), out c);
+            if (c)
+            {
+                furnace.description = "Melts 1 gold with 3 wood into a gold coin. Placeholder art until the furnace asset exists.";
+                furnace.finishedScale = 0.5f;
+                furnace.EditorSetMovement(false, 1f, new Vector2(1.4f, 0.8f), new Vector2(0f, -WorldObjectFactory.BaseOffsetY), false);
+                furnace.constructionStages.Add(Stage(houseConstruction, 300, 0.75f, 0.125f));
+                furnace.destroyedStages.Add(Stage(houseDestroyed, Always, 0.75f, 0.41f));
+                furnace.capacity = 0;
+                furnace.inventorySlots = 3;
+                furnace.slotCapacity = 30;
+                furnace.furnaceInputA = s.GoldResource;
+                furnace.furnaceInputAAmount = 1;
+                furnace.furnaceInputB = s.WoodResource;
+                furnace.furnaceInputBAmount = 3;
+                furnace.furnaceOutput = s.GoldCoin;
+                furnace.furnaceOutputAmount = 1;
+                furnace.furnaceSeconds = 8f;
+                furnace.smokeFrames = Frames(TS + "Particle FX/Dust_01.png");
+                furnace.smokeHeight = 3f;
+                furnace.smokeOffset = new Vector2(0.15f, 1.3f);
+                furnace.buildCost = Cost(s, 20, 30);
+            }
+
+            // Gold mines: the map's mines are ruins (GoldMine) until repaired; Active / Inactive are working mines.
+            // Villagers go inside and bring gold out (piles at the entrance); "Destroy" breaks the mine.
+            var mineInactive = First(MineFolder + "GoldMine_Inactive.png");
+            var mineActive = First(MineFolder + "GoldMine_Active.png");
+            var mineDestroyed = First(MineFolder + "GoldMine_Destroyed.png");
+            BuildingDefinition Mine(SpawnableDefinition source, string name, bool ruin)
+            {
+                var b = ConvertToBuilding(source);
+                if (b == null) return null;
+                if (Configure(b, false, name, WorldObjectKind.GoldMine, BuildingType.GoldMine, mineInactive, new Vector2Int(3, 2), 0.14f, 2000, 1000,
+                        new Vector2(2.8f, 1.7f)))
+                {
+                    b.description = "Villagers mine gold inside (it piles up at the entrance). Destroy breaks it; it can be repaired.";
+                    b.activeSprite = mineActive;
+                    b.constructionStages.Add(Stage(mineDestroyed, 1000, 1f, 0.2f));
+                    b.destroyedStages.Add(Stage(mineDestroyed, Always, 1f, 0.2f));
+                    b.spawnDestroyed = ruin;
+                    b.capacity = 2;
+                    b.soldiersCanEnter = false;
+                    b.priestsCanEnter = false;
+                    b.doorOffset = new Vector2(0f, -0.35f);
+                    b.mineOutput = s.GoldResource;
+                    b.mineInterval = 5f;
+                    b.mineReserve = 500;
+                    b.buildCost = Cost(s, 40, 20);
+                    EditorUtility.SetDirty(b);
+                }
+                return b;
+            }
+            var ruinMine = Mine(s.GoldMine, "Gold Mine", true);
+            var activeMine = Mine(s.GoldMineActive, "Gold Mine (active)", false);
+            var buildMine = Mine(s.GoldMineInactive, "Gold Mine", false);
+            if (ruinMine != null) s.GoldMine = ruinMine;
+            if (activeMine != null) s.GoldMineActive = activeMine;
+            if (buildMine != null) s.GoldMineInactive = buildMine;
+
+            s.Buildings.Add(castle);
+            s.Buildings.Add(school);
+            s.Buildings.Add(army);
+            s.Buildings.Add(church);
+            s.Buildings.AddRange(houses);
+            s.Buildings.Add(tower);
+            s.Buildings.Add(bridgeH);
+            s.Buildings.Add(bridgeV);
+            s.Buildings.Add(furnace);
+            if (buildMine != null) s.Buildings.Add(buildMine);
+            foreach (var b in s.Buildings) if (b != null) EditorUtility.SetDirty(b);
+        }
+
+        // ================================================================== classes and gameplay settings
+
+        const string UnitsFolder = TS + "Units/Blue Units/";
+        public const string WarriorAnimationsPath = "Assets/Data/Characters/WarriorAnimations_Blue.asset";
+        public const string LancerAnimationsPath = "Assets/Data/Characters/LancerAnimations_Blue.asset";
+        public const string ArcherAnimationsPath = "Assets/Data/Characters/ArcherAnimations_Blue.asset";
+        public const string MonkAnimationsPath = "Assets/Data/Characters/MonkAnimations_Blue.asset";
+
+        /// <summary>Soldier / monk animation set: idle, run and the weapon (its idle / run are the basic ones).</summary>
+        static PawnAnimationSet ClassAnimations(string path, string idle, string run, InteractionTool weapon, string attack,
+            System.Action<PawnAnimationSet.ToolAnimations> extra = null)
+        {
+            var set = LoadOrCreate<PawnAnimationSet>(path, out bool fresh);
+            if (!fresh && set.idle != null && set.idle.Length > 0 && set.tools.Count > 0) return set;
+            set.idle = Frames(UnitsFolder + idle);
+            set.run = Frames(UnitsFolder + run);
+            var tool = set.EditorSetTool(weapon, set.idle, set.run, Frames(UnitsFolder + attack));
+            extra?.Invoke(tool);
+            EditorUtility.SetDirty(set);
+            return set;
+        }
+
+        static void BuildGameplaySettings(Spawnables s)
+        {
+            var warrior = ClassAnimations(WarriorAnimationsPath, "Warrior/Warrior_Idle.png", "Warrior/Warrior_Run.png", InteractionTool.Sword,
+                "Warrior/Warrior_Attack1.png", t => t.interactAlternate = Frames(UnitsFolder + "Warrior/Warrior_Attack2.png"));
+            var lancer = ClassAnimations(LancerAnimationsPath, "Lancer/Lancer_Idle.png", "Lancer/Lancer_Run.png", InteractionTool.Spear,
+                "Lancer/Lancer_Right_Attack.png", t =>
+                {
+                    t.interactUp = Frames(UnitsFolder + "Lancer/Lancer_Up_Attack.png");
+                    t.interactUpSide = Frames(UnitsFolder + "Lancer/Lancer_UpRight_Attack.png");
+                    t.interactDown = Frames(UnitsFolder + "Lancer/Lancer_Down_Attack.png");
+                    t.interactDownSide = Frames(UnitsFolder + "Lancer/Lancer_DownRight_Attack.png");
+                });
+            var archer = ClassAnimations(ArcherAnimationsPath, "Archer/Archer_Idle.png", "Archer/Archer_Run.png", InteractionTool.Bow, "Archer/Archer_Shoot.png");
+            var monk = ClassAnimations(MonkAnimationsPath, "Monk/Idle.png", "Monk/Run.png", InteractionTool.Heal, "Monk/Heal.png");
+            var pawn = AssetDatabase.LoadAssetAtPath<PawnAnimationSet>(PawnAnimationsPath);
+
+            var arrows = TilesetSlicer.EnsureNamedSlices(ArrowSheet, new List<(string, RectInt)>
+            {
+                ("Arrow_Flying", new RectInt(0, 64, 64, 64)),
+                ("Arrow_Stuck", new RectInt(0, 0, 64, 64)), // the arrow without its head
+            });
+            arrows.TryGetValue("Arrow_Flying", out var arrow);
+            arrows.TryGetValue("Arrow_Stuck", out var stuckArrow);
+
+            var settings = GameplaySettings.LoadOrCreateDefault();
+            bool fresh = overwrite || settings.EditorDataVersion < 1;
+            if (fresh)
+            {
+                settings.buildMenu = new List<BuildingDefinition>(s.Buildings);
+                settings.EditorDataVersion = 1;
+            }
+            else
+                foreach (var b in s.Buildings)
+                    if (b != null && !settings.buildMenu.Contains(b)) settings.buildMenu.Add(b);
+            settings.buildMenu.RemoveAll(b => b == null);
+            if (fresh || settings.EditorDataVersion < 2)
+            {
+                // Version 2: resource bar, stuck arrows, smaller arrows, templates
+                settings.resourceBarItems = new List<SpawnableDefinition> { s.WoodResource, s.Rock, s.GoldResource, s.GoldCoin };
+                settings.resourceBarItems.RemoveAll(x => x == null);
+                settings.stuckArrowSprite = stuckArrow;
+                settings.arrowScale = 0.55f;
+                settings.templateAlpha = 0.75f;
+                settings.EditorDataVersion = 2;
+            }
+            if (settings.stuckArrowSprite == null) settings.stuckArrowSprite = stuckArrow;
+            if (fresh || settings.goldCoin == null) settings.goldCoin = s.GoldCoin;
+            if (fresh || settings.villagerAnimations == null) settings.villagerAnimations = pawn;
+            if (fresh || settings.warriorAnimations == null) settings.warriorAnimations = warrior;
+            if (fresh || settings.lancerAnimations == null) settings.lancerAnimations = lancer;
+            if (fresh || settings.archerAnimations == null) settings.archerAnimations = archer;
+            if (fresh || settings.priestAnimations == null) settings.priestAnimations = monk;
+            if (fresh || settings.arrowSprite == null) settings.arrowSprite = arrow;
+            EditorUtility.SetDirty(settings);
         }
 
         // ================================================================== rule presets
@@ -938,7 +1378,21 @@ namespace KingOfNothing.EditorTools
                 Trait("StoneEater", "Stone Eater", "Eats stones when starving; walks slower afterwards.",
                     "Crunchy.", TraitTrigger.Starvation, 0.3f, true, 1f, 0.7f, 0f),
                 Trait("Sluggish", "Sluggish", "Takes their time. Every time.", "No rush.", TraitTrigger.GameStart, 1f, false, 1f, 0.75f, 0f),
+                FearOfHeights(),
             };
+        }
+
+        /// <summary>An archer with this trait is useless on an archer tower (revealed when put on one).</summary>
+        static TraitDefinition FearOfHeights()
+        {
+            var trait = Trait("FearOfHeights", "Fear of Heights", "Useless on an archer tower: cannot shoot from up there.",
+                "The ground is where I belong.", TraitTrigger.Manual, 1f, true, 1f, 1f, 0f);
+            if (!trait.UselessOnTowers)
+            {
+                trait.EditorSetUselessOnTowers(true);
+                EditorUtility.SetDirty(trait);
+            }
+            return trait;
         }
 
         /// <summary>Every "Pawn_*" sheet of one colour: idle / run, tools (idle, run, interact) and carrying.</summary>

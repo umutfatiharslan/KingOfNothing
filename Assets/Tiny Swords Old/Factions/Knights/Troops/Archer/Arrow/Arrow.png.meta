@@ -49,7 +49,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -116,45 +116,45 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Arrow_0
+      name: Arrow_Flying
       rect:
         serializedVersion: 2
         x: 0
-        y: 85
+        y: 64
         width: 64
-        height: 16
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: ffa7ae2edb90fa3c0800000000000000
-      internalID: -4346244404228752641
+      spriteID: 095309675e573d34392da2d4dae83af1
+      internalID: -624775913
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Arrow_1
+      name: Arrow_Stuck
       rect:
         serializedVersion: 2
         x: 0
-        y: 21
-        width: 51
-        height: 16
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 006039e4eafe883a0800000000000000
-      internalID: -6662812116773042688
+      spriteID: f2d2ac459d5092a4999198a2040e1b47
+      internalID: 1977285039
       vertices: []
       indices: 
       edges: []
@@ -172,7 +172,9 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Arrow_Flying: -624775913
+      Arrow_Stuck: 1977285039
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

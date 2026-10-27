@@ -21,6 +21,12 @@ namespace KingOfNothing.Units
         /// <summary>Called once when the job becomes the current one.</summary>
         public virtual void Begin(Unit unit) { }
 
+        /// <summary>
+        /// True if the job works with the loot in the character's hands (stocking it). Any other job makes the
+        /// character put its loot down first.
+        /// </summary>
+        public virtual bool KeepsLoot => false;
+
         /// <summary>Called every frame while it is the current job.</summary>
         public abstract JobState Tick(Unit unit, float deltaTime);
 
@@ -52,7 +58,12 @@ namespace KingOfNothing.Units
         public void Assign(UnitJob job, bool append = false)
         {
             if (job == null) return;
-            if (!append) ClearJobs();
+            if (!append)
+            {
+                ClearJobs();
+                // A new order interrupts the walk of the previous one at once
+                if (unit != null) unit.Stop();
+            }
             queue.Enqueue(job);
         }
 
@@ -74,13 +85,16 @@ namespace KingOfNothing.Units
                 if (queue.Count == 0) return;
                 current = queue.Dequeue();
                 if (logJobs) Debug.Log($"[{name}] starts: {current.Label}", this);
+                if (!current.KeepsLoot && unit.Carrier != null && unit.Carrier.IsHolding) unit.Carrier.DropHere();
                 current.Begin(unit);
             }
 
-            var state = current.Tick(unit, Time.deltaTime);
+            var job = current;
+            var state = job.Tick(unit, Time.deltaTime);
             if (state == JobState.Running) return;
-            if (logJobs) Debug.Log($"[{name}] {(state == JobState.Done ? "finished" : "gave up")}: {current.Label}", this);
-            current = null;
+            if (logJobs) Debug.Log($"[{name}] {(state == JobState.Done ? "finished" : "gave up")}: {job.Label}", this);
+            // The job may have cleared the queue itself (entering a building)
+            if (current == job) current = null;
         }
 
         void OnDisable() => ClearJobs();

@@ -50,6 +50,11 @@ namespace KingOfNothing.Characters
             if (showNameTag) CreateNameTag();
         }
 
+        void Start()
+        {
+            if (role != VillagerRole.Villager) ApplyRoleLook();
+        }
+
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 
@@ -83,6 +88,7 @@ namespace KingOfNothing.Characters
         {
             if (role == newRole) return;
             role = newRole;
+            ApplyRoleLook();
             RoleChanged?.Invoke(this, role);
         }
 
@@ -96,6 +102,26 @@ namespace KingOfNothing.Characters
                     if (trait.definition != null && trait.revealed) speed = trait.definition.ModifyWorkSpeed(this, speed);
                 return speed;
             }
+        }
+
+        /// <summary>Animations of the role (pawn, warrior, lancer, archer, monk) from the GameplaySettings asset.</summary>
+        void ApplyRoleLook()
+        {
+            if (unit == null) unit = GetComponent<Unit>();
+            var map = KingOfNothing.World.MapData.Instance;
+            if (unit == null || map == null) return;
+            var g = map.Gameplay;
+            PawnAnimationSet set;
+            switch (role)
+            {
+                case VillagerRole.Warrior: set = g.warriorAnimations; break;
+                case VillagerRole.Lancer: set = g.lancerAnimations; break;
+                case VillagerRole.Archer: set = g.archerAnimations; break;
+                case VillagerRole.Priest: set = g.priestAnimations; break;
+                default: set = g.villagerAnimations; break;
+            }
+            if (set != null) unit.Animations = set;
+            unit.ClearWorkAnimation();
         }
 
         public bool HasTrait(TraitDefinition definition) => traits.Exists(t => t.definition == definition);

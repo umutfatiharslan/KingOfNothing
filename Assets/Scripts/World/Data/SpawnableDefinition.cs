@@ -44,6 +44,8 @@ namespace KingOfNothing.World
         [Min(0f)] [SerializeField] float animationFps = 10f;
         [Tooltip("Optional prefab. When set it is instantiated instead of building the object from the frames.")]
         [SerializeField] GameObject prefabOverride;
+        [Tooltip("Size of the sprite on the map (gold coin: 0.35, so it fits in a pawn's hand).")]
+        [Min(0.05f)] [SerializeField] float visualScale = 1f;
 
         [Header("Placement")]
         [Tooltip("Cells covered on the map grid (e.g. a gold mine is 3x2).")]
@@ -96,6 +98,7 @@ namespace KingOfNothing.World
         public bool Animate => animate;
         public float AnimationFps => animationFps;
         public GameObject PrefabOverride => prefabOverride;
+        public float VisualScale => Mathf.Max(0.05f, visualScale);
         public Vector2Int Footprint => new Vector2Int(Mathf.Max(1, footprint.x), Mathf.Max(1, footprint.y));
         public float GroundInset => groundInset;
         public bool BlocksBuilding => blocksBuilding;
@@ -135,6 +138,12 @@ namespace KingOfNothing.World
         }
 
         public void EditorSetStump(SpawnableDefinition newStump) => stump = newStump;
+
+        public void EditorSetVisualScale(float scale) => visualScale = scale;
+
+        public void EditorSetStackSize(int size) => stackSize = Mathf.Max(1, size);
+
+        public void EditorSetMovable(bool movable) => movableByCharacters = movable;
 
         public bool EditorMovementConfigured => movementConfigured;
         public int EditorDataVersion => dataVersion;

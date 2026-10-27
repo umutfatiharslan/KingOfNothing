@@ -91,6 +91,18 @@ namespace KingOfNothing.World.Objects
             if (notify && before != health) AnyHealthChanged?.Invoke(this, before, health);
         }
 
+        /// <summary>Changes the maximum health (a manned tower is stronger); the health keeps its distance to the maximum.</summary>
+        protected void SetMaxHealth(int value, bool keepMissingHealth, bool notify = true)
+        {
+            value = Mathf.Max(1, value);
+            if (value == maxHealth) return;
+            int missing = maxHealth - health;
+            int before = health;
+            maxHealth = value;
+            health = keepMissingHealth ? Mathf.Clamp(maxHealth - missing, 0, maxHealth) : Mathf.Clamp(health, 0, maxHealth);
+            if (notify && before != health) AnyHealthChanged?.Invoke(this, before, health);
+        }
+
         /// <summary>After the first hit some objects look different for good (gold stones lose their highlight).</summary>
         void UpdateDamagedLook()
         {

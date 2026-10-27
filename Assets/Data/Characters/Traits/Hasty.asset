@@ -22,3 +22,4 @@ MonoBehaviour:
   workSpeedMultiplier: 1
   moveSpeedMultiplier: 1.4
   moraleDrainPerSecond: 0
+  uselessOnTowers: 0

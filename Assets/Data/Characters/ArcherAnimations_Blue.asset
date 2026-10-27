@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cf45faf275e6814980a0b3fd997feb6, type: 3}
+  m_Name: ArcherAnimations_Blue
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.Units.PawnAnimationSet
+  idle:
+  - {fileID: 7257567913506708742, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+  - {fileID: -7989796299022447421, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+  - {fileID: 7725435616784934678, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+  - {fileID: -1293103732667120055, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+  - {fileID: 427913027731640163, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+  - {fileID: -9045297040117572726, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+  run:
+  - {fileID: 8882666270506729424, guid: a2db8ff0b36884d3680f752d33764b12, type: 3}
+  - {fileID: 8418572898541717210, guid: a2db8ff0b36884d3680f752d33764b12, type: 3}
+  - {fileID: 4917221495796577052, guid: a2db8ff0b36884d3680f752d33764b12, type: 3}
+  - {fileID: 1313344751431586703, guid: a2db8ff0b36884d3680f752d33764b12, type: 3}
+  framesPerSecond: 10
+  tools:
+  - tool: 7
+    idle:
+    - {fileID: 7257567913506708742, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+    - {fileID: -7989796299022447421, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+    - {fileID: 7725435616784934678, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+    - {fileID: -1293103732667120055, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+    - {fileID: 427913027731640163, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+    - {fileID: -9045297040117572726, guid: 72c22f22ea5e4488390ba536cd5ab98d, type: 3}
+    run:
+    - {fileID: 8882666270506729424, guid: a2db8ff0b36884d3680f752d33764b12, type: 3}
+    - {fileID: 8418572898541717210, guid: a2db8ff0b36884d3680f752d33764b12, type: 3}
+    - {fileID: 4917221495796577052, guid: a2db8ff0b36884d3680f752d33764b12, type: 3}
+    - {fileID: 1313344751431586703, guid: a2db8ff0b36884d3680f752d33764b12, type: 3}
+    interact:
+    - {fileID: -3522987849309635434, guid: aac0c2b0aef584db0a90373d4b7e99ae, type: 3}
+    - {fileID: 1796539565894229437, guid: aac0c2b0aef584db0a90373d4b7e99ae, type: 3}
+    - {fileID: -6164423668334797513, guid: aac0c2b0aef584db0a90373d4b7e99ae, type: 3}
+    - {fileID: 8855168420743222378, guid: aac0c2b0aef584db0a90373d4b7e99ae, type: 3}
+    - {fileID: 8284549177786691415, guid: aac0c2b0aef584db0a90373d4b7e99ae, type: 3}
+    - {fileID: -2689744893154487746, guid: aac0c2b0aef584db0a90373d4b7e99ae, type: 3}
+    - {fileID: 500622343033487627, guid: aac0c2b0aef584db0a90373d4b7e99ae, type: 3}
+    - {fileID: 7309834836266252465, guid: aac0c2b0aef584db0a90373d4b7e99ae, type: 3}
+    interactAlternate: []
+    interactUp: []
+    interactUpSide: []
+    interactDown: []
+    interactDownSide: []
+  idleWood: []
+  runWood: []
+  idleGold: []
+  runGold: []
+  idleMeat: []
+  runMeat: []

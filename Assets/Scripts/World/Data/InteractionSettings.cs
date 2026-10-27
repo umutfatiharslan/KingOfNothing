@@ -24,6 +24,17 @@ namespace KingOfNothing.World
         [Tooltip("Moment of the hit inside one swing of the interact animation (0 = start, 1 = end).")]
         [Range(0f, 1f)] public float hitImpactPoint = 0.6f;
 
+        [Header("Work spot (where a character stands while working on an object)")]
+        [Tooltip("Gap (cells) between the object's hitbox and the character's feet while working. The character stands " +
+                 "beside the object, level with its base, so the tool touches it (at least the feet radius is kept).")]
+        [Min(0f)] public float workStandDistance = 0.28f;
+        [Tooltip("How far (cells) in front of the object's base the character stands, so it is drawn over the object and the tool stays visible.")]
+        [Min(0f)] public float workStandFrontOffset = 0.05f;
+        [Tooltip("Distance (cells) from the work spot that counts as arrived.")]
+        [Min(0.02f)] public float workSpotTolerance = 0.12f;
+        [Tooltip("Several characters on one big object (building) keep at least this distance (cells) between their spots.")]
+        [Min(0.1f)] public float workSpotSpacing = 0.65f;
+
         [Header("Hit shake (objects wobble when they are hit)")]
         [Min(0f)] public float shakeAmplitude = 0.07f;
         [Min(0.01f)] public float shakeDuration = 0.25f;
@@ -117,7 +128,7 @@ namespace KingOfNothing.World
         public const string HealthBarBasePath = "Assets/Tiny Swords/UI Elements/Bars/SmallBar_Base.png";
         public const string HealthBarFillPath = "Assets/Tiny Swords/UI Elements/Bars/SmallBar_Fill.png";
         public const string SilhouetteShaderPath = "Assets/Shaders/SpriteSilhouette.shader";
-        const int CurrentDataVersion = 2;
+        const int CurrentDataVersion = 3;
 
         /// <summary>Fills references that were added in newer versions (bar sprites, shader) and new defaults (editor only).</summary>
         public void EditorEnsureDefaults()
@@ -128,6 +139,14 @@ namespace KingOfNothing.World
             if (silhouetteShader == null) { silhouetteShader = UnityEditor.AssetDatabase.LoadAssetAtPath<Shader>(SilhouetteShaderPath); changed |= silhouetteShader != null; }
             if (dataVersion < 1) hitLunge = 0f; // the pawn interact animations show the hit; no body lean by default
             if (dataVersion < 2) selectedTint = new Color(1f, 0.72f, 0.38f, 1f); // orange selection tint
+            if (dataVersion < 3)
+            {
+                // Work spot beside the object (the tool touches it)
+                workStandDistance = 0.28f;
+                workStandFrontOffset = 0.05f;
+                workSpotTolerance = 0.12f;
+                workSpotSpacing = 0.65f;
+            }
             if (dataVersion < CurrentDataVersion)
             {
                 dataVersion = CurrentDataVersion;

@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cf45faf275e6814980a0b3fd997feb6, type: 3}
+  m_Name: LancerAnimations_Blue
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.Units.PawnAnimationSet
+  idle:
+  - {fileID: -594197781322936934, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: 455444515322244926, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: 517828865657036009, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: -3032027852008287605, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: -5574184733968180747, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: -1753309511941541117, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: 4863313082578348910, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: -5592250592134132327, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: 2319514263577396720, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: -4102534018874827341, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: 9164178780147294991, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  - {fileID: 8611835898225032345, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+  run:
+  - {fileID: -8580444238127179786, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+  - {fileID: 828278362111410375, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+  - {fileID: -4153816518293905039, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+  - {fileID: 1456675321045083290, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+  - {fileID: -3942745417268178275, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+  - {fileID: -1776823346852784203, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+  framesPerSecond: 10
+  tools:
+  - tool: 6
+    idle:
+    - {fileID: -594197781322936934, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: 455444515322244926, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: 517828865657036009, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: -3032027852008287605, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: -5574184733968180747, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: -1753309511941541117, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: 4863313082578348910, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: -5592250592134132327, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: 2319514263577396720, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: -4102534018874827341, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: 9164178780147294991, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    - {fileID: 8611835898225032345, guid: 2307ce0d618cb4ea2be2cb2a4148cbde, type: 3}
+    run:
+    - {fileID: -8580444238127179786, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+    - {fileID: 828278362111410375, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+    - {fileID: -4153816518293905039, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+    - {fileID: 1456675321045083290, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+    - {fileID: -3942745417268178275, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+    - {fileID: -1776823346852784203, guid: ce378960746b14f2d830cac2b7d11921, type: 3}
+    interact:
+    - {fileID: 6331980819534964110, guid: e9222978b50fc478bac2042c170d401a, type: 3}
+    - {fileID: 7232042838751349278, guid: e9222978b50fc478bac2042c170d401a, type: 3}
+    - {fileID: -4157329051755591257, guid: e9222978b50fc478bac2042c170d401a, type: 3}
+    interactAlternate: []
+    interactUp:
+    - {fileID: -1486743630280823639, guid: fe58c1206463e41038c8e61414f84d8e, type: 3}
+    - {fileID: -1198247047316955265, guid: fe58c1206463e41038c8e61414f84d8e, type: 3}
+    - {fileID: 6051932423378392712, guid: fe58c1206463e41038c8e61414f84d8e, type: 3}
+    interactUpSide:
+    - {fileID: 5676588645026460789, guid: 09fbf0334fc6944ce9b692899a86f104, type: 3}
+    - {fileID: 7574153149545624337, guid: 09fbf0334fc6944ce9b692899a86f104, type: 3}
+    - {fileID: 6233515880032540177, guid: 09fbf0334fc6944ce9b692899a86f104, type: 3}
+    interactDown:
+    - {fileID: 704632438053712794, guid: 16d606f92b3e14969a958240569d4dcc, type: 3}
+    - {fileID: 3804270661726973974, guid: 16d606f92b3e14969a958240569d4dcc, type: 3}
+    - {fileID: -8774836977957818446, guid: 16d606f92b3e14969a958240569d4dcc, type: 3}
+    interactDownSide:
+    - {fileID: 1761619492895743875, guid: bacd50e04b6444e00ba223b68b680cb3, type: 3}
+    - {fileID: -2961677195299870038, guid: bacd50e04b6444e00ba223b68b680cb3, type: 3}
+    - {fileID: -5698094106703109678, guid: bacd50e04b6444e00ba223b68b680cb3, type: 3}
+  idleWood: []
+  runWood: []
+  idleGold: []
+  runGold: []
+  idleMeat: []
+  runMeat: []

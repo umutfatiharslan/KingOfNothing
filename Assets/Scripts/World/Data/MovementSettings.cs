@@ -37,8 +37,8 @@ namespace KingOfNothing.World
         [Min(0.1f)] public float stuckRepathTime = 0.75f;
 
         [Header("Transparency")]
-        [Tooltip("Opacity of an object while a character walks through it or stands right behind it (0.5 = 50% transparent).")]
-        [Range(0f, 1f)] public float occludedAlpha = 0.5f;
+        [Tooltip("Opacity of an object while a character walks through it or stands right behind it (0.75 = 25% transparent).")]
+        [Range(0f, 1f)] public float occludedAlpha = 0.75f;
         [Tooltip("How fast objects fade (opacity change per second).")]
         [Min(0.1f)] public float fadeSpeed = 6f;
 
@@ -46,6 +46,8 @@ namespace KingOfNothing.World
         [Tooltip("Draw the active hitboxes (Scene view gizmos, and the Game view when Gizmos is on).")]
         public bool showHitboxes;
         public Color hitboxColor = new Color(1f, 0.3f, 0.2f, 0.9f);
+
+        [SerializeField, HideInInspector] int dataVersion;
 
         static MovementSettings fallback;
 
@@ -65,14 +67,30 @@ namespace KingOfNothing.World
         }
 
 #if UNITY_EDITOR
+        const int CurrentDataVersion = 1;
+
+        /// <summary>New default values of newer versions, applied once (editor only).</summary>
+        public void EditorEnsureDefaults()
+        {
+            if (dataVersion >= CurrentDataVersion) return;
+            if (dataVersion < 1) occludedAlpha = 0.75f; // 25% transparent behind / inside objects
+            dataVersion = CurrentDataVersion;
+            if (UnityEditor.AssetDatabase.Contains(this)) UnityEditor.EditorUtility.SetDirty(this);
+        }
+
         /// <summary>Loads the default asset, creating it (with the default values) if it does not exist yet.</summary>
         public static MovementSettings LoadOrCreateDefault()
         {
             var asset = UnityEditor.AssetDatabase.LoadAssetAtPath<MovementSettings>(DefaultPath);
-            if (asset != null) return asset;
+            if (asset != null)
+            {
+                asset.EditorEnsureDefaults();
+                return asset;
+            }
             if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Data")) UnityEditor.AssetDatabase.CreateFolder("Assets", "Data");
             if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Data/World")) UnityEditor.AssetDatabase.CreateFolder("Assets/Data", "World");
             asset = CreateInstance<MovementSettings>();
+            asset.dataVersion = CurrentDataVersion;
             UnityEditor.AssetDatabase.CreateAsset(asset, DefaultPath);
             UnityEditor.AssetDatabase.SaveAssets();
             return asset;

@@ -9,32 +9,103 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 10a4a630219e95a47ad23e0674ee93b3, type: 3}
+  m_Script: {fileID: 11500000, guid: cc00b9b52253603449d73501ff072d07, type: 3}
   m_Name: GoldMine
   m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.SpawnableDefinition
   displayName: Gold Mine
   kind: 6
   frames:
-  - {fileID: 21300000, guid: 5a1fe87ade19b79479ef8c991d27bd21, type: 3}
+  - {fileID: 21300000, guid: 1fbda4aa397309e43b846e1091221bc4, type: 3}
   animate: 0
   animationFps: 10
   prefabOverride: {fileID: 0}
+  visualScale: 1
   footprint: {x: 3, y: 2}
-  groundInset: 0.25
+  groundInset: 0.14
   blocksBuilding: 1
   walkThrough: 0
   walkThroughSpeed: 1
   hitboxSize: {x: 2.8, y: 1.7}
-  hitboxOffset: {x: 0, y: -0.1}
+  hitboxOffset: {x: 0, y: -0.15}
   fadeWhenHidingCharacter: 1
   movementConfigured: 1
-  resourceType: 4
-  maxHealth: 500
-  yieldAmount: 50
+  resourceType: 0
+  maxHealth: 2000
+  yieldAmount: 0
   drops: []
-  stackSize: 10
+  stackSize: 1
   damagedFrames: []
   movableByCharacters: 0
   interactionTool: 0
   dataVersion: 2
   stump: {fileID: 0}
+  buildingType: 8
+  description: Villagers mine gold inside (it piles up at the entrance). Destroy
+    breaks it; it can be repaired.
+  menuIcon: {fileID: 0}
+  finishedScale: 1
+  centerOnFootprint: 0
+  drawUnderCharacters: 0
+  constructionStages:
+  - sprite: {fileID: 21300000, guid: 5a1fe87ade19b79479ef8c991d27bd21, type: 3}
+    scale: 1
+    groundInset: 0.2
+    belowHealth: 1000
+    repeatPerCell: 0
+  destroyedStages:
+  - sprite: {fileID: 21300000, guid: 5a1fe87ade19b79479ef8c991d27bd21, type: 3}
+    scale: 1
+    groundInset: 0.2
+    belowHealth: 2147483647
+    repeatPerCell: 0
+  destroyedHealth: 1000
+  spawnDestroyed: 1
+  activeSprite: {fileID: 21300000, guid: e0e37812bb65a664ba9d751b41c48b26, type: 3}
+  tileStart: {fileID: 0}
+  tileMiddle: {fileID: 0}
+  tileEnd: {fileID: 0}
+  maxCount: -1
+  buildCost:
+  - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+    amount: 40
+    chance: 1
+  - item: {fileID: 11400000, guid: 7159892eb7cf8fa41892075218a83164, type: 2}
+    amount: 20
+    chance: 1
+  gameOverWhenDestroyed: 0
+  capacity: 2
+  villagersCanEnter: 1
+  soldiersCanEnter: 0
+  priestsCanEnter: 0
+  doorOffset: {x: 0, y: -0.35}
+  inventorySlots: 0
+  slotCapacity: 100
+  perchOffset: {x: 0, y: 2.3}
+  mannedHealthBonus: 500
+  archerRangeMultiplier: 2
+  archeryBonusPerStep: 1
+  archeryBonusMax: 5
+  archeryBonusInterval: 60
+  healCost: 20
+  indulgenceCost: 10
+  randomSkillCost: 1000
+  unlocksPriest: 0
+  allowsClassChange: 0
+  furnaceInputA: {fileID: 0}
+  furnaceInputAAmount: 1
+  furnaceInputB: {fileID: 0}
+  furnaceInputBAmount: 3
+  furnaceOutput: {fileID: 0}
+  furnaceOutputAmount: 1
+  furnaceSeconds: 8
+  smokeFrames: []
+  smokeHeight: 3
+  smokeOffset: {x: 0.2, y: 1.4}
+  smokeInterval: 0.35
+  smokeLifetime: 2.4
+  smokeScale: 0.8
+  isBridge: 0
+  mineOutput: {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
+  mineInterval: 5
+  mineReserve: 500
+  buildingDataVersion: 2

@@ -516,6 +516,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
   - {fileID: 11400000, guid: 98a97fa4a61695540819f2c7b6840fed, type: 2}
   - {fileID: 11400000, guid: 45faa0674740e67479121f85a390c53f, type: 2}
+  - {fileID: 11400000, guid: 6669335e14754394cb37c774b5981891, type: 2}
+  - {fileID: 11400000, guid: 2d5634aa2cd851f4ba9c78ffe6f5464b, type: 2}
+  - {fileID: 11400000, guid: 07b72b153e045d84b88e9c11b7d06c76, type: 2}
+  - {fileID: 11400000, guid: dc083abb5b43d4d4d921178e24717993, type: 2}
+  - {fileID: 11400000, guid: 19bb6546d3065b146a4e412c4f26a141, type: 2}
+  - {fileID: 11400000, guid: 297bf4c1a4a5e6347a7957ba00e2ac3c, type: 2}
+  - {fileID: 11400000, guid: e33ff0c03e8c9a94badf4d3c62293cbe, type: 2}
+  - {fileID: 11400000, guid: 82b31b895f8e5834e8e8abb6c4c96134, type: 2}
+  - {fileID: 11400000, guid: 6aa6dfc155d19ab4a9e40b837eafb498, type: 2}
+  - {fileID: 11400000, guid: 26910606cd11e024d920a4e8a3d40524, type: 2}
+  - {fileID: 11400000, guid: 1b7dae601d2dce947b72dff25ab17ee8, type: 2}
+  - {fileID: 11400000, guid: 64cbfdf0ba3778448b9b1bf67c8e3635, type: 2}
+  - {fileID: 11400000, guid: 01d8ab900bd0c4d4391899771f423d96, type: 2}
   startArea:
     clearRadius: 5
     minDistanceToWater: 8

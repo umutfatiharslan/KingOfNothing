@@ -15,6 +15,9 @@ namespace KingOfNothing.Interaction
     ///  - Destroy: one left click deletes the object under the cursor
     ///  - Place: left click places the object chosen in the panel
     ///  - Move: click an object, then click the cell it should move to
+    ///  - Characters: choose a profession and click the map to add a character
+    /// The tools only work while the panel is open: closing it with F2 pauses the current tool, opening it again
+    /// brings it back. Clicks on other panels and buttons (build menu...) never reach the tools.
     /// Every change (also hits, and everything that happens in Default mode) is saved into the edited map file,
     /// never into the original map. The panel can undo / redo changes and reset the map to the original
     /// (deletes the edited map file). Right click or Escape cancels the tool.
@@ -30,9 +33,16 @@ namespace KingOfNothing.Interaction
             Destroy,
             Place,
             Move,
+            Characters,
         }
 
-        static readonly string[] ToolNames = { "Select", "Hit", "Destroy", "Place", "Move" };
+        static readonly string[] ToolNames = { "Select", "Hit", "Destroy", "Place", "Move", "Characters" };
+        static readonly KingOfNothing.Characters.VillagerRole[] SpawnRoles =
+        {
+            KingOfNothing.Characters.VillagerRole.Villager, KingOfNothing.Characters.VillagerRole.Warrior,
+            KingOfNothing.Characters.VillagerRole.Lancer, KingOfNothing.Characters.VillagerRole.Archer,
+            KingOfNothing.Characters.VillagerRole.Priest, KingOfNothing.Characters.VillagerRole.King,
+        };
         const int WindowId = 0x4B4F4E;
 
         [SerializeField] MapGenerator generator;
@@ -46,9 +56,13 @@ namespace KingOfNothing.Interaction
         public static bool CapturesMouse { get; private set; }
 
         DevTool tool;
-        int paletteIndex;
+        SpawnableDefinition placeDefinition;
+        List<SpawnableDefinition> sortedPalette;
+        int paletteSourceCount = -1;
+        int spawnRole;
+        SpriteRenderer placeGhost;
         Vector2 paletteScroll;
-        Rect windowRect = new Rect(10, 10, 300, 120);
+        Rect windowRect = new Rect(10, 52, 330, 120);
         bool confirmReset;
         float confirmResetUntil;
         Camera cam;
@@ -84,6 +98,11 @@ namespace KingOfNothing.Interaction
             CancelAll();
         }
 
+        void OnDestroy()
+        {
+            if (placeGhost != null) Destroy(placeGhost.gameObject);
+        }
+
         void Update()
         {
             CapturesMouse = false;
@@ -107,9 +126,18 @@ namespace KingOfNothing.Interaction
             }
             if (mouse == null) return;
 
-            bool overPanel = showPanel && windowRect.Contains(GuiMousePosition(mouse));
+            // Closed panel: the current tool rests until the panel is opened again
+            if (!showPanel)
+            {
+                CancelAll();
+                return;
+            }
+
+            // Over this panel or any other panel / button (build menu, resource bar...): no tool action
+            bool overPanel = windowRect.Contains(GuiMousePosition(mouse)) || ScreenUi.IsPointerOver(mouse.position.ReadValue());
             if (stroking && !mouse.leftButton.isPressed) EndStroke();
             CapturesMouse = tool != DevTool.None || overPanel || boxPressing;
+            UpdatePlaceGhost(mouse, overPanel);
             if (overPanel && !stroking && !boxPressing) return;
 
             if (cam == null) cam = Camera.main;
@@ -161,6 +189,11 @@ namespace KingOfNothing.Interaction
                     }
                     return;
 
+                case DevTool.Characters:
+                    if (right) SetTool(DevTool.None);
+                    else if (left) SpawnCharacterAt(world);
+                    return;
+
                 case DevTool.Move:
                     if (preview.IsActive)
                     {
@@ -199,6 +232,81 @@ namespace KingOfNothing.Interaction
             if (stroking) EndStroke();
             preview.End();
             boxPressing = boxDragging = false;
+            if (placeGhost != null) placeGhost.enabled = false;
+        }
+
+        // ------------------------------------------------------------------ palette and place preview
+
+        /// <summary>The placeable objects in alphabetical order.</summary>
+        List<SpawnableDefinition> SortedPalette
+        {
+            get
+            {
+                var palette = generator != null ? generator.DeveloperPalette : null;
+                int count = palette != null ? palette.Count : 0;
+                if (sortedPalette == null || paletteSourceCount != count)
+                {
+                    paletteSourceCount = count;
+                    sortedPalette = new List<SpawnableDefinition>();
+                    if (palette != null) foreach (var d in palette) if (d != null) sortedPalette.Add(d);
+                    sortedPalette.Sort((a, b) => string.Compare(a.DisplayName, b.DisplayName, System.StringComparison.OrdinalIgnoreCase));
+                }
+                return sortedPalette;
+            }
+        }
+
+        /// <summary>See-through copy of the chosen object under the mouse (Place tool), like the move preview.</summary>
+        void UpdatePlaceGhost(Mouse mouse, bool overPanel)
+        {
+            bool show = tool == DevTool.Place && !overPanel && placeDefinition != null && placeDefinition.PreviewSprite != null;
+            if (!show)
+            {
+                if (placeGhost != null) placeGhost.enabled = false;
+                return;
+            }
+            if (cam == null) cam = Camera.main;
+            if (cam == null) return;
+            if (placeGhost == null)
+            {
+                placeGhost = new GameObject("Place Preview").AddComponent<SpriteRenderer>();
+                placeGhost.sortingOrder = short.MaxValue - 20;
+            }
+            Vector2 world = cam.ScreenToWorldPoint(mouse.position.ReadValue());
+            var sprite = placeDefinition.PreviewSprite;
+            placeGhost.enabled = true;
+            placeGhost.sprite = sprite;
+            placeGhost.color = Settings.previewTint;
+            var cell = PlaceCell(placeDefinition, world);
+            float scale = placeDefinition is BuildingDefinition b ? b.finishedScale : placeDefinition.VisualScale;
+            placeGhost.transform.localScale = new Vector3(scale, scale, 1f);
+            placeGhost.transform.position = placeDefinition is BuildingDefinition building
+                ? BuildMenuController.SpritePosition(building, sprite, cell)
+                : WorldObjectFactory.SpritePosition(placeDefinition, sprite, cell, Vector2.zero);
+        }
+
+        /// <summary>Cell an object is placed on for the mouse position (big objects are centred on the mouse).</summary>
+        static Vector2Int PlaceCell(SpawnableDefinition definition, Vector2 world)
+        {
+            var cell = MapData.WorldToCell(world);
+            var footprint = definition.Footprint;
+            return new Vector2Int(cell.x - footprint.x / 2, cell.y);
+        }
+
+        // ------------------------------------------------------------------ characters
+
+        void SpawnCharacterAt(Vector2 world)
+        {
+            var map = MapData.Instance;
+            if (map == null || !map.IsWalkable(world)) return;
+            var spawner = FindAnyObjectByType<KingOfNothing.Characters.StartingPartySpawner>();
+            if (spawner == null)
+            {
+                Debug.LogWarning("[Dev] No StartingPartySpawner in the scene (it holds the villager prefab).");
+                return;
+            }
+            var role = SpawnRoles[Mathf.Clamp(spawnRole, 0, SpawnRoles.Length - 1)];
+            var villager = spawner.SpawnVillager(role, world);
+            if (villager != null && logActions) Debug.Log($"[Dev] Added {villager.DisplayName} ({role})");
         }
 
         MapChangeHistory History => generator != null ? generator.History : null;
@@ -307,14 +415,43 @@ namespace KingOfNothing.Interaction
         /// <summary>Places the palette object on the cell under the cursor if it is free (brush skips occupied cells).</summary>
         void PlaceAt(Vector2 world)
         {
-            var palette = generator != null ? generator.DeveloperPalette : null;
-            if (palette == null || palette.Count == 0) return;
-            paletteIndex = Mathf.Clamp(paletteIndex, 0, palette.Count - 1);
-            var definition = palette[paletteIndex];
+            var definition = placeDefinition;
             var map = MapData.Instance;
-            var cell = MapData.WorldToCell(world);
-            // Developer mode: objects may be placed into / onto each other
+            if (definition == null || map == null) return;
+            var cell = PlaceCell(definition, world);
+            // Developer mode: objects may be placed into / onto each other - except loot, which stacks
             if (definition == null || !map.InBounds(cell)) return;
+            if (IsLoot(definition))
+            {
+                PlaceLoot(definition, cell, map);
+                return;
+            }
+            if (WorldObjectFactory.Create(definition, cell, Vector2.zero, generator.EditsRoot, map) != null) strokeCount++;
+        }
+
+        /// <summary>Piles of items (wood, gold, coins, small stones / mushrooms...).</summary>
+        static bool IsLoot(SpawnableDefinition definition) =>
+            definition.Kind == WorldObjectKind.Item || (definition.IsCollectable && definition.MovableByCharacters);
+
+        static readonly List<WorldObject> LootNearby = new List<WorldObject>();
+
+        /// <summary>
+        /// Loot placed with the developer tools stacks like dropped loot: it is added to a pile of the same item on
+        /// the cell (up to the pile size); a full pile sends it to the nearest free cell next to it.
+        /// </summary>
+        void PlaceLoot(SpawnableDefinition definition, Vector2Int cell, MapData map)
+        {
+            LootNearby.Clear();
+            map.CollectObjects(new RectInt(cell, Vector2Int.one), LootNearby);
+            foreach (var o in LootNearby)
+            {
+                if (o == null || o.IsCarried || o.Definition != definition || o.Amount >= definition.StackSize) continue;
+                o.AddAmount(1);
+                strokeCount++;
+                return;
+            }
+            bool occupied = LootNearby.Exists(o => o != null && !o.IsCarried);
+            if (occupied && !ItemDropper.FindFreeCell(map, new RectInt(cell, Vector2Int.one), 1, out cell)) return;
             if (WorldObjectFactory.Create(definition, cell, Vector2.zero, generator.EditsRoot, map) != null) strokeCount++;
         }
 
@@ -348,7 +485,7 @@ namespace KingOfNothing.Interaction
 
         void DrawWindow(int id)
         {
-            int selected = GUILayout.Toolbar((int)tool, ToolNames);
+            int selected = GUILayout.SelectionGrid((int)tool, ToolNames, 3);
             if (selected != (int)tool) SetTool((DevTool)selected);
 
             switch (tool)
@@ -368,6 +505,9 @@ namespace KingOfNothing.Interaction
                 case DevTool.Place:
                     GUILayout.Label("Click, or hold and drag to paint (overlapping allowed).");
                     DrawPalette();
+                    break;
+                case DevTool.Characters:
+                    DrawCharacters();
                     break;
                 case DevTool.Move:
                     GUILayout.Label(preview.IsActive
@@ -474,20 +614,28 @@ namespace KingOfNothing.Interaction
 
         void DrawPalette()
         {
-            var palette = generator != null ? generator.DeveloperPalette : null;
-            if (palette == null || palette.Count == 0)
+            var palette = SortedPalette;
+            if (palette.Count == 0)
             {
                 GUILayout.Label("No objects in the settings.");
                 return;
             }
+            if (placeDefinition == null || !palette.Contains(placeDefinition)) placeDefinition = palette[0];
             paletteScroll = GUILayout.BeginScrollView(paletteScroll, GUILayout.Height(220));
-            for (int i = 0; i < palette.Count; i++)
+            foreach (var definition in palette)
             {
-                if (palette[i] == null) continue;
-                bool on = GUILayout.Toggle(i == paletteIndex, palette[i].DisplayName, "Button");
-                if (on) paletteIndex = i;
+                bool on = GUILayout.Toggle(definition == placeDefinition, definition.DisplayName, "Button");
+                if (on) placeDefinition = definition;
             }
             GUILayout.EndScrollView();
+        }
+
+        void DrawCharacters()
+        {
+            GUILayout.Label("Choose a profession, then click the map to add a character.");
+            var names = new string[SpawnRoles.Length];
+            for (int i = 0; i < names.Length; i++) names[i] = SpawnRoles[i].ToString();
+            spawnRole = GUILayout.SelectionGrid(Mathf.Clamp(spawnRole, 0, names.Length - 1), names, 3);
         }
     }
 }

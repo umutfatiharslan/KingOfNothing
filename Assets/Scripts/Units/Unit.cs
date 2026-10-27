@@ -42,6 +42,8 @@ namespace KingOfNothing.Units
         [SerializeField] Vector2 selectionSize = new Vector2(0.9f, 0.45f);
 
         public bool IsSelected { get; private set; }
+        /// <summary>The villager component on the same object (null for plain units).</summary>
+        public KingOfNothing.Characters.Villager Villager { get; private set; }
         public bool IsMoving { get; private set; }
         public float MoveSpeed
         {
@@ -74,6 +76,10 @@ namespace KingOfNothing.Units
         public int SortingOrder => body != null ? body.sortingOrder : MapSorting.Order(transform.position.x, transform.position.y);
         /// <summary>Jobs (hit, carry...) of this unit.</summary>
         public UnitWorker Worker { get; private set; }
+        /// <summary>Loot the unit holds in its hands ("Carry loot"), kept across move orders.</summary>
+        public LootCarrier Carrier { get; private set; }
+        /// <summary>Sprite renderer of the body.</summary>
+        public SpriteRenderer Body => body;
 
         void OnEnable()
         {
@@ -90,6 +96,9 @@ namespace KingOfNothing.Units
             if (GetComponent<UnitPathIndicator>() == null) gameObject.AddComponent<UnitPathIndicator>();
             Worker = GetComponent<UnitWorker>();
             if (Worker == null) Worker = gameObject.AddComponent<UnitWorker>();
+            Villager = GetComponent<KingOfNothing.Characters.Villager>();
+            Carrier = GetComponent<LootCarrier>();
+            if (Carrier == null) Carrier = gameObject.AddComponent<LootCarrier>();
             CreateSelectionRing();
             SetSelected(false);
             // Units should not animate in sync
@@ -135,11 +144,21 @@ namespace KingOfNothing.Units
             if (!working) swingStart = -1f;
         }
 
-        /// <summary>Plays the interact animation of the current tool once, over the given time (one hit).</summary>
-        public void PlaySwing(float duration)
+        Sprite[] swingFrames;
+        bool alternateSwing;
+
+        /// <summary>
+        /// Plays the interact (work / attack) animation of the current tool once, over the given time (one hit).
+        /// The direction picks directional attacks (lancer) and turns the body; warriors alternate their two attacks.
+        /// </summary>
+        public void PlaySwing(float duration, Vector2 direction = default)
         {
             swingStart = Time.time;
             swingDuration = Mathf.Max(0.05f, duration);
+            var tool = animations != null ? animations.ForTool(workTool) : null;
+            swingFrames = tool != null ? tool.InteractFor(direction, alternateSwing) : null;
+            alternateSwing = !alternateSwing;
+            if (direction.sqrMagnitude > 0.0001f) Face(direction);
         }
 
         /// <summary>What the unit carries (wood / gold / meat have their own pawn sprites; None = nothing or another object).</summary>
@@ -147,6 +166,64 @@ namespace KingOfNothing.Units
 
         /// <summary>True if the pawn sprite itself shows this carried resource (the object is hidden then).</summary>
         public bool ShowsCarried(ResourceType resource) => animations != null && animations.Carrying(resource, false) != null;
+
+        // ------------------------------------------------------------------ buildings (inside / on a tower)
+
+        /// <summary>Building the unit is inside of or standing on (null = outside).</summary>
+        public IUnitHost Host { get; private set; }
+        /// <summary>Inside a building: invisible, cannot be clicked, does not collide.</summary>
+        public bool IsHidden { get; private set; }
+        /// <summary>Standing on top of a tower: visible and selectable but does not walk.</summary>
+        public bool IsPerched { get; private set; }
+        int sortingOverride;
+
+        /// <summary>Called by a building: the unit goes inside (hidden) or on top of it (perched at the given point).</summary>
+        public void EnterHost(IUnitHost host, bool hidden, Vector2 perchPoint, int perchSortingOrder)
+        {
+            Worker?.ClearJobs();
+            Stop();
+            Host = host;
+            IsHidden = hidden;
+            IsPerched = !hidden;
+            if (IsPerched)
+            {
+                transform.position = new Vector3(perchPoint.x, perchPoint.y, transform.position.z);
+                sortingOverride = perchSortingOrder;
+            }
+            SetVisible(!hidden);
+            if (hidden && IsSelected) SelectionManager.Instance?.Deselect(this);
+        }
+
+        /// <summary>Draw order while standing on a tower (just above the tower).</summary>
+        public void SetPerchSortingOrder(int order) => sortingOverride = order;
+
+        /// <summary>Called by the building when the unit comes out (at the door / at the foot of the tower).</summary>
+        public void LeaveHost(Vector2 exitPoint)
+        {
+            if (Host == null) return;
+            Host = null;
+            IsHidden = false;
+            IsPerched = false;
+            transform.position = new Vector3(exitPoint.x, exitPoint.y, transform.position.z);
+            target = exitPoint;
+            SetVisible(true);
+        }
+
+        void SetVisible(bool visible)
+        {
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+                if (r != ring) r.enabled = visible;
+            if (ring != null) ring.enabled = visible && IsSelected;
+            var hit = GetComponent<Collider2D>();
+            if (hit != null) hit.enabled = visible;
+            if (body != null) body.color = Color.white;
+        }
+
+        /// <summary>Leaves a building before walking somewhere else.</summary>
+        void LeaveHostForMove()
+        {
+            if (Host != null) Host.Release(this);
+        }
 
         public void SetSelected(bool selected)
         {
@@ -156,6 +233,7 @@ namespace KingOfNothing.Units
 
         public void MoveTo(Vector2 destination)
         {
+            LeaveHostForMove();
             repathAttempts = 0;
             PlanPath(destination);
         }
@@ -183,6 +261,7 @@ namespace KingOfNothing.Units
         /// <summary>Walks in a straight line (short distances next to a target; collisions still apply).</summary>
         public void MoveStraight(Vector2 destination)
         {
+            LeaveHostForMove();
             repathAttempts = 0;
             finalDestination = destination;
             target = destination;
@@ -223,7 +302,7 @@ namespace KingOfNothing.Units
 
         void Update()
         {
-            if (IsMoving) Move();
+            if (IsMoving && Host == null) Move();
             Animate();
             UpdateWading();
             UpdateSorting();
@@ -244,6 +323,12 @@ namespace KingOfNothing.Units
 
             if (toWaypoint.magnitude <= step)
             {
+                if (KeepOnWalkableGround(position, waypoint) != waypoint)
+                {
+                    // The waypoint lies in deep water (a straight walk next to a bridge): stop at the edge
+                    Stop();
+                    return;
+                }
                 transform.position = waypoint;
                 pathIndex++;
                 repathAttempts = 0;
@@ -257,12 +342,32 @@ namespace KingOfNothing.Units
             }
             Vector2 next = position + toWaypoint.normalized * step;
             if (collideWithObjects) next = ResolveCollisions(next);
+            next = KeepOnWalkableGround(position, next);
             transform.position = next;
             if (body != null && Mathf.Abs(toWaypoint.x) > 0.01f) body.flipX = toWaypoint.x < 0;
             CheckStuck(Vector2.Distance(next, waypoint));
         }
 
         // ------------------------------------------------------------------ collisions
+
+        /// <summary>
+        /// Characters never step from walkable ground into a cell they cannot walk on (deep water more than the
+        /// wadeable depth from the shore, e.g. off the side of a bridge far out at sea). They slide along the edge
+        /// instead. A character already standing on such a cell (its bridge was destroyed) may walk out.
+        /// </summary>
+        Vector2 KeepOnWalkableGround(Vector2 from, Vector2 to)
+        {
+            var map = MapData.Instance;
+            if (map == null || !map.IsReady) return to;
+            var toCell = MapData.WorldToCell(to);
+            if (map.IsTerrainWalkable(toCell)) return to;
+            if (!map.IsTerrainWalkable(MapData.WorldToCell(from))) return to;
+            var alongX = new Vector2(to.x, from.y);
+            if (map.IsTerrainWalkable(MapData.WorldToCell(alongX))) return alongX;
+            var alongY = new Vector2(from.x, to.y);
+            if (map.IsTerrainWalkable(MapData.WorldToCell(alongY))) return alongY;
+            return from;
+        }
 
         /// <summary>Pushes the feet (a circle) out of the hitboxes of the solid objects near the unit.</summary>
         Vector2 ResolveCollisions(Vector2 p)
@@ -331,7 +436,8 @@ namespace KingOfNothing.Units
         {
             if (body == null) return;
             var map = MapData.Instance;
-            bool inWater = waterSinkDepth > 0f && map != null && map.IsReady && map.IsWater(MapData.WorldToCell(transform.position));
+            var feetCell = MapData.WorldToCell(transform.position);
+            bool inWater = waterSinkDepth > 0f && !IsPerched && map != null && map.IsReady && map.IsWater(feetCell) && !map.IsBridge(feetCell);
             float wanted = inWater ? waterSinkDepth : 0f;
             bool lunging = lungeTime > 0f;
             if (Mathf.Approximately(currentSink, wanted) && !lunging && !lungedLastFrame) return;
@@ -357,13 +463,14 @@ namespace KingOfNothing.Units
             if (animations != null && working && swingStart >= 0f)
             {
                 var tool = animations.ForTool(workTool);
-                if (tool != null && tool.interact.Length > 0)
+                var swing = swingFrames != null && swingFrames.Length > 0 ? swingFrames : tool != null ? tool.interact : null;
+                if (swing != null && swing.Length > 0)
                 {
                     float t = (Time.time - swingStart) / swingDuration;
                     if (t < 1f)
                     {
-                        currentFrames = tool.interact;
-                        body.sprite = tool.interact[Mathf.Clamp((int)(t * tool.interact.Length), 0, tool.interact.Length - 1)];
+                        currentFrames = swing;
+                        body.sprite = swing[Mathf.Clamp((int)(t * swing.Length), 0, swing.Length - 1)];
                         return;
                     }
                 }
@@ -401,7 +508,7 @@ namespace KingOfNothing.Units
 
         void UpdateSorting()
         {
-            int order = MapSorting.Order(transform.position.x, transform.position.y);
+            int order = IsPerched ? sortingOverride : MapSorting.Order(transform.position.x, transform.position.y);
             if (body != null) body.sortingOrder = order;
             if (ring != null) ring.sortingOrder = order - 1;
         }

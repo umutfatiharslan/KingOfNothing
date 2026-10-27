@@ -19,6 +19,7 @@ MonoBehaviour:
   animate: 0
   animationFps: 10
   prefabOverride: {fileID: 0}
+  visualScale: 1
   footprint: {x: 1, y: 1}
   groundInset: 0.3
   blocksBuilding: 0
@@ -37,7 +38,7 @@ MonoBehaviour:
     chance: 1
   stackSize: 10
   damagedFrames: []
-  movableByCharacters: 0
+  movableByCharacters: 1
   interactionTool: 0
   dataVersion: 2
   stump: {fileID: 0}

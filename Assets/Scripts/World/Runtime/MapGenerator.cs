@@ -310,6 +310,7 @@ namespace KingOfNothing.World
         string StartHistory()
         {
             StopHistory(false);
+            KingOfNothing.World.Buildings.BuildingInventory.Resolver = FindSpawnable;
             if (!ShowsOriginalMap) return "changes are not saved (not the original map)";
             if (!spawnObjects) return "edited map not loaded (objects are off)";
             if (!loadEditedMap) return "edited map not loaded";
@@ -428,6 +429,15 @@ namespace KingOfNothing.World
                 spawnablesById = new Dictionary<string, SpawnableDefinition>();
                 foreach (var s in DeveloperPalette)
                     if (s != null) spawnablesById[s.name] = s;
+                // Buildings and the gold coin are found even when they are missing from the developer palette
+                var gameplay = MapData != null ? MapData.Gameplay : null;
+                if (gameplay != null)
+                {
+                    foreach (var b in gameplay.buildMenu)
+                        if (b != null && !spawnablesById.ContainsKey(b.name)) spawnablesById[b.name] = b;
+                    if (gameplay.goldCoin != null && !spawnablesById.ContainsKey(gameplay.goldCoin.name))
+                        spawnablesById[gameplay.goldCoin.name] = gameplay.goldCoin;
+                }
             }
             return spawnablesById.TryGetValue(id, out var result) ? result : null;
         }

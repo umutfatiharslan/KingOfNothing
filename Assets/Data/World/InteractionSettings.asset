@@ -17,6 +17,10 @@ MonoBehaviour:
   interactRange: 0.75
   hitLunge: 0
   hitImpactPoint: 0.6
+  workStandDistance: 0.28
+  workStandFrontOffset: 0.05
+  workSpotTolerance: 0.12
+  workSpotSpacing: 0.65
   shakeAmplitude: 0.07
   shakeDuration: 0.25
   shakeFrequency: 32
@@ -47,4 +51,4 @@ MonoBehaviour:
   formationSpacing: 1
   developerHitPower: 10
   brushSpacing: 1
-  dataVersion: 2
+  dataVersion: 3

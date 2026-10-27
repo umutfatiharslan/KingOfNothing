@@ -26,10 +26,22 @@ namespace KingOfNothing.Units
         public override string Label => $"{verb} {(target != null ? target.DisplayName : "?")}";
         public ResourceNode Target => target;
 
-        InteractionTool Tool => target != null && target.Definition != null ? target.Definition.Tool : InteractionTool.Hammer;
+        InteractionTool targetTool => target != null && target.Definition != null ? target.Definition.Tool : InteractionTool.Hammer;
+        InteractionTool tool = InteractionTool.Hammer;
+        InteractionTool Tool => tool;
+
+        /// <summary>Villagers use the object's tool; soldiers (cutting bushes) use their own weapon.</summary>
+        static InteractionTool ToolFor(Unit unit, InteractionTool objectTool)
+        {
+            var villager = unit != null ? unit.Villager : null;
+            if (villager != null && KingOfNothing.Characters.VillagerRoles.IsSoldier(villager.Role))
+                return KingOfNothing.Characters.VillagerRoles.WeaponFor(villager.Role);
+            return objectTool;
+        }
 
         public override void Begin(Unit unit)
         {
+            tool = ToolFor(unit, targetTool);
             approach.Reset();
             swinging = false;
             unit.SetWorkAnimation(Tool, false);
@@ -41,7 +53,7 @@ namespace KingOfNothing.Units
             if (target.IsCarried) return JobState.Failed;
 
             var box = target.Hitbox;
-            if (!approach.Tick(unit, box, Approach.Reach(unit), out bool failed, target))
+            if (!approach.TickWork(unit, box, out bool failed, target))
             {
                 unit.SetWorkAnimation(Tool, false);
                 swinging = false;
@@ -58,7 +70,7 @@ namespace KingOfNothing.Units
                 swinging = true;
                 impactDone = false;
                 swingTime = 0f;
-                unit.PlaySwing(interval);
+                unit.PlaySwing(interval, box.center - (Vector2)unit.transform.position);
             }
             swingTime += deltaTime;
             if (!impactDone && swingTime >= interval * settings.hitImpactPoint)
@@ -72,6 +84,10 @@ namespace KingOfNothing.Units
         }
 
         /// <summary>Stops working but keeps the tool animations (the next order decides what comes next).</summary>
-        public override void Cancel(Unit unit) => unit.SetWorkAnimation(unit.WorkTool, false);
+        public override void Cancel(Unit unit)
+        {
+            Approach.Release(unit);
+            unit.SetWorkAnimation(unit.WorkTool, false);
+        }
     }
 }
