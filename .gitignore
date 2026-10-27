@@ -56,3 +56,7 @@ Desktop.ini
 # Old baked map scene (very large). The new World.unity generates the map at runtime and is small enough to commit.
 /Assets/Scenes/RTSMap.unity
 /Assets/Scenes/RTSMap.unity.meta
+
+
+/Assets/_Recovery/
+
