@@ -15,6 +15,10 @@ namespace KingOfNothing.World.Objects
 
         public void SetOriginalTree(SpawnableDefinition tree) => originalTree = tree;
 
+        public override SpawnableDefinition LinkedDefinition => originalTree;
+
+        public override void SetLinkedDefinition(SpawnableDefinition linked) => originalTree = linked;
+
         /// <summary>Replaces the stump with its tree again (priest ability, holy rain...).</summary>
         public TreeResource RegrowTree()
         {

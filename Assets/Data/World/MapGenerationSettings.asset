@@ -15,6 +15,78 @@ MonoBehaviour:
   width: 1800
   height: 800
   seed: 20261024
+  mapSource: 0
+  referenceMap: {fileID: 11400000, guid: ab34f6f4a662a5a469f849e118299fd4, type: 2}
+  referenceSettings:
+    maxRivers: 20
+    coastNoise:
+      scale: 90
+      octaves: 3
+      lacunarity: 2
+      persistence: 0.5
+    coastNoiseStrength: 10
+    coastDetailNoise:
+      scale: 9
+      octaves: 2
+      lacunarity: 2
+      persistence: 0.5
+    coastDetailStrength: 4
+    coastSmoothingPasses: 2
+    riverWarp: 3
+    riverWarpScale: 22
+    riverExtensionWidth: 3
+    borderMargin: 2
+    edgeSeaBand: 8
+    edgeSeaBandNoise: 45
+    edgeSeaBandNoiseSettings:
+      scale: 45
+      octaves: 4
+      lacunarity: 2
+      persistence: 0.5
+    riverExtensionNoise:
+      scale: 25
+      octaves: 3
+      lacunarity: 2
+      persistence: 0.5
+    riverExtensionContrast: 7
+    minIslandSize: 225
+    minSeaHoleSize: 9
+    biomeBorderWarp: 14
+    biomeBorderWarpNoise:
+      scale: 35
+      octaves: 3
+      lacunarity: 2
+      persistence: 0.5
+    biomeSmoothingPasses: 4
+    minBiomePatch: 180
+    referenceAffinity: 0.35
+  referenceBiomeMapping:
+  - source: 1
+    biome: {fileID: 11400000, guid: c3a82abd162131741b7b24d84be78b4e, type: 2}
+  - source: 2
+    biome: {fileID: 11400000, guid: c3a82abd162131741b7b24d84be78b4e, type: 2}
+  - source: 3
+    biome: {fileID: 11400000, guid: 07ff26ddfe0d2f942abe463615f178d8, type: 2}
+  - source: 5
+    biome: {fileID: 11400000, guid: 07ff26ddfe0d2f942abe463615f178d8, type: 2}
+  - source: 4
+    biome: {fileID: 11400000, guid: 210ea20d03b057744aef6d52c69b9dc7, type: 2}
+  - source: 7
+    biome: {fileID: 11400000, guid: 210ea20d03b057744aef6d52c69b9dc7, type: 2}
+  - source: 6
+    biome: {fileID: 11400000, guid: c7d0068c9db81d94283af97194adc3ff, type: 2}
+  - source: 8
+    biome: {fileID: 11400000, guid: c7d0068c9db81d94283af97194adc3ff, type: 2}
+  - source: 9
+    biome: {fileID: 11400000, guid: bca1a71df18360445afcb4979a94f3b9, type: 2}
+  - source: 10
+    biome: {fileID: 11400000, guid: 65b8ab757ba4b464fb2322436dfa0a09, type: 2}
+  - source: 11
+    biome: {fileID: 11400000, guid: 65b8ab757ba4b464fb2322436dfa0a09, type: 2}
+  - source: 12
+    biome: {fileID: 11400000, guid: bb1e2d8de1363cf4f8fd5521fc37ae44, type: 2}
+  - source: 0
+    biome: {fileID: 11400000, guid: 210ea20d03b057744aef6d52c69b9dc7, type: 2}
   landmass:
     landRatio: 0.4
     initialOvershoot: 0.03
@@ -46,8 +118,8 @@ MonoBehaviour:
   lakes:
     enabled: 1
     count:
-      min: 10
-      max: 16
+      min: 4
+      max: 8
     radius:
       min: 6
       max: 26
@@ -77,8 +149,8 @@ MonoBehaviour:
       persistence: 0.5
     courseWarpStrength: 80
     sourceCount:
-      min: 12
-      max: 18
+      min: 4
+      max: 8
     minSourceDistanceToSea: 90
     minDistanceBetweenSources: 80
     minRiverLength: 70
@@ -89,6 +161,9 @@ MonoBehaviour:
       min: 25
       max: 70
     minTributaryLength: 20
+    existingRiverBranches:
+      min: 10
+      max: 16
     sourceWidth: 1
     maxWidth: 6
     widthStepLength:
@@ -140,6 +215,7 @@ MonoBehaviour:
     riverCrossingCost: 4
     seedCandidates: 80
     regionSpreadDistance: 400
+    minRegionSeedSpacing: 70
     smoothingPasses: 2
     smoothingRadius: 2
     smoothingMargin: 3
@@ -165,6 +241,16 @@ MonoBehaviour:
       count:
         min: 25
         max: 40
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.2
+      clusterSize:
+        min: 1
+        max: 1
+      clusterRadius: 2
       useClustering: 0
       clusterNoise:
         scale: 26
@@ -196,11 +282,61 @@ MonoBehaviour:
     - {fileID: 11400000, guid: c7d0068c9db81d94283af97194adc3ff, type: 2}
     - {fileID: 11400000, guid: bca1a71df18360445afcb4979a94f3b9, type: 2}
     - {fileID: 11400000, guid: 65b8ab757ba4b464fb2322436dfa0a09, type: 2}
-  - label: Skulls
+  - label: Pumpkins
     enabled: 1
     variants:
-    - spawnable: {fileID: 11400000, guid: a7445392c2e858a419f71142faa312fa, type: 2}
+    - spawnable: {fileID: 11400000, guid: 9940cb2ce16bc804b8ccb4af66865b6f, type: 2}
       weight: 1
+    - spawnable: {fileID: 11400000, guid: deafd022bb751954f9dfab7a8a70d04a, type: 2}
+      weight: 1
+    allowedTerrain: 2
+    placement:
+      distribution: 1
+      densityPer1000Cells: 5
+      count:
+        min: 150
+        max: 300
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.3
+      clusterSize:
+        min: 1
+        max: 4
+      clusterRadius: 2
+      useClustering: 0
+      clusterNoise:
+        scale: 26
+        octaves: 3
+        lacunarity: 2
+        persistence: 0.5
+      clusterThreshold: 0.55
+      clusterFalloff: 0.1
+      outsideClusterFactor: 0.05
+      minSpacingX: 0
+      minSpacingY: 0
+      minDistanceToOtherObjects: 0
+      shoreDistance:
+        min: 2
+        max: 9999
+      priority: 12
+      positionJitter: 0.3
+    stumpChance: 0
+    companions:
+      enabled: 0
+      count:
+        min: 0
+        max: 3
+      ringRadius: 1
+      variants: []
+    allowedBiomes:
+    - {fileID: 11400000, guid: 210ea20d03b057744aef6d52c69b9dc7, type: 2}
+    - {fileID: 11400000, guid: c7d0068c9db81d94283af97194adc3ff, type: 2}
+  - label: Skulls (waiting for the skull asset)
+    enabled: 0
+    variants: []
     allowedTerrain: 2
     placement:
       distribution: 1
@@ -208,6 +344,16 @@ MonoBehaviour:
       count:
         min: 100
         max: 180
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.25
+      clusterSize:
+        min: 1
+        max: 1
+      clusterRadius: 2
       useClustering: 0
       clusterNoise:
         scale: 26
@@ -257,6 +403,16 @@ MonoBehaviour:
       count:
         min: 250
         max: 300
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.3
+      clusterSize:
+        min: 1
+        max: 2
+      clusterRadius: 2
       useClustering: 0
       clusterNoise:
         scale: 26
@@ -306,6 +462,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.3
+      clusterSize:
+        min: 1
+        max: 3
+      clusterRadius: 2
       useClustering: 0
       clusterNoise:
         scale: 26
@@ -315,8 +481,8 @@ MonoBehaviour:
       clusterThreshold: 0.55
       clusterFalloff: 0.1
       outsideClusterFactor: 0.05
-      minSpacingX: 2
-      minSpacingY: 2
+      minSpacingX: 1
+      minSpacingY: 1
       minDistanceToOtherObjects: 0
       shoreDistance:
         min: 2
@@ -332,6 +498,24 @@ MonoBehaviour:
       ringRadius: 1
       variants: []
     allowedBiomes: []
+  extraDeveloperObjects:
+  - {fileID: 11400000, guid: a7445392c2e858a419f71142faa312fa, type: 2}
+  - {fileID: 11400000, guid: bd446d22a822ea140949c8a44161a3a4, type: 2}
+  - {fileID: 11400000, guid: f000332fe05866b419da68b92d327788, type: 2}
+  - {fileID: 11400000, guid: 7159892eb7cf8fa41892075218a83164, type: 2}
+  - {fileID: 11400000, guid: 68ad4f2f04251ef48ba1a3c6de39a0f2, type: 2}
+  - {fileID: 11400000, guid: 384a89f8af09bc640ac088b1d40a6b63, type: 2}
+  - {fileID: 11400000, guid: 118e62f7da7998140985b4255ae9c7d6, type: 2}
+  - {fileID: 11400000, guid: 6298a95d7f6c51e418ca9c85aefab975, type: 2}
+  - {fileID: 11400000, guid: e8491996c44792c47ba9a36df67f9448, type: 2}
+  - {fileID: 11400000, guid: 4fd366dce4862a54f96ce32632bf678c, type: 2}
+  - {fileID: 11400000, guid: 880d2d6556dd36f47994a9a1155fc120, type: 2}
+  - {fileID: 11400000, guid: f09c603e6a2fac3458f4b61703f503af, type: 2}
+  - {fileID: 11400000, guid: 01d8ab900bd0c4d4391899771f423d96, type: 2}
+  - {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+  - {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
+  - {fileID: 11400000, guid: 98a97fa4a61695540819f2c7b6840fed, type: 2}
+  - {fileID: 11400000, guid: 45faa0674740e67479121f85a390c53f, type: 2}
   startArea:
     clearRadius: 5
     minDistanceToWater: 8

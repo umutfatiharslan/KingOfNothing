@@ -1,13 +1,14 @@
 using KingOfNothing.World;
 using KingOfNothing.World.Generation;
+using KingOfNothing.World.Persistence;
 using UnityEditor;
 using UnityEngine;
 
 namespace KingOfNothing.EditorTools
 {
     /// <summary>
-    /// Inspector of MapGenerator: fast layout preview (terrain + biomes as a picture, with statistics),
-    /// full generation in the editor, clearing, and seed helpers.
+    /// Inspector of MapGenerator: original map info and baking, fast layout preview (terrain + biomes as a
+    /// picture, with statistics), building the map in the editor, clearing, seed helpers and the edited map file.
     /// </summary>
     [CustomEditor(typeof(MapGenerator))]
     public class MapGeneratorEditor : UnityEditor.Editor
@@ -30,6 +31,9 @@ namespace KingOfNothing.EditorTools
                 return;
             }
 
+            DrawOriginalMap(generator);
+
+            EditorGUILayout.Space(6);
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (GUILayout.Button(new GUIContent("Preview Layout", "Terrain and biomes only, shown below. Fast; creates nothing.")))
@@ -40,7 +44,7 @@ namespace KingOfNothing.EditorTools
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button(new GUIContent("Generate In Scene", "Full map with tilemaps and objects. Takes a few seconds.")))
+                if (GUILayout.Button(new GUIContent("Build In Scene", "Full map (original + edited map file, or a fresh map in test mode) with tilemaps and objects. Takes a few seconds.")))
                     GenerateWithProgress(generator);
                 if (GUILayout.Button("Clear")) generator.ClearGenerated();
             }
@@ -60,9 +64,66 @@ namespace KingOfNothing.EditorTools
                 GUI.DrawTexture(rect, preview, ScaleMode.ScaleToFit);
                 EditorGUILayout.HelpBox(previewReport, MessageType.None);
             }
-            else if (generator.LastReport != null)
+            else if (!string.IsNullOrEmpty(generator.LastReportText))
             {
-                EditorGUILayout.HelpBox($"Last map (seed {generator.LastSeed}):\n{generator.LastReport}", MessageType.None);
+                EditorGUILayout.HelpBox($"Last map (seed {generator.LastSeed}):\n{generator.LastReportText}", MessageType.None);
+            }
+        }
+
+        static void DrawOriginalMap(MapGenerator generator)
+        {
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Original map (frozen) / edited map (this computer)", EditorStyles.miniBoldLabel);
+            var original = generator.OriginalMap;
+            if (original == null || !original.HasData)
+                EditorGUILayout.HelpBox("No original map baked yet. It is baked automatically the first time the map is built " +
+                                        "(Play), or press Bake Original Map. Commit the OriginalMap asset afterwards.", MessageType.Info);
+            else
+                EditorGUILayout.HelpBox($"Original: seed {original.Seed}, {original.Width}x{original.Height}, {original.ObjectCount} objects, " +
+                                        $"baked {original.BakedAt} ({original.SizeKilobytes} KB). Changing the settings does not change it.",
+                                        MessageType.None);
+
+            string path = new EditedMapFile(generator.EditedMapFileName).FilePath;
+            bool exists = System.IO.File.Exists(path);
+            EditorGUILayout.HelpBox((exists ? "Edited map file: " : "No edited map file yet (the map equals the original): ") + path,
+                exists ? MessageType.None : MessageType.Info);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button(new GUIContent("Bake Original Map", "Generate a new original from the current settings and seed (replaces the frozen one).")))
+                {
+                    bool hasOriginal = original != null && original.HasData;
+                    if (!hasOriginal || EditorUtility.DisplayDialog("Bake original map",
+                            "Replace the original map with a new one generated from the current settings (seed " + generator.ResolveSeed() + ")?\n\n" +
+                            "Every team member's edited map file belongs to the old original; it will be archived (not applied) the next time the map is built.",
+                            "Bake", "Cancel"))
+                        BakeWithProgress(generator);
+                }
+                GUI.enabled = exists && !Application.isPlaying;
+                if (GUILayout.Button(new GUIContent("Delete Edited Map", "Back to the original map on this computer (while playing, use Reset in the F2 developer panel).")) &&
+                    EditorUtility.DisplayDialog("Delete edited map", "Delete " + path + "?\nThe map goes back to the original.", "Delete", "Cancel"))
+                {
+                    new EditedMapFile(generator.EditedMapFileName).Delete();
+                    if (generator.HasMap) GenerateWithProgress(generator);
+                }
+                GUI.enabled = true;
+                if (GUILayout.Button("Open Saves Folder"))
+                {
+                    System.IO.Directory.CreateDirectory(EditedMapFile.Folder);
+                    EditorUtility.RevealInFinder(EditedMapFile.Folder);
+                }
+            }
+        }
+
+        static void BakeWithProgress(MapGenerator generator)
+        {
+            try
+            {
+                generator.BakeOriginal(generator.ResolveSeed(), (step, t) => EditorUtility.DisplayProgressBar("Baking original map", step, t));
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
 

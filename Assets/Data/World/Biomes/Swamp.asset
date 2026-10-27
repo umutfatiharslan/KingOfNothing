@@ -15,9 +15,10 @@ MonoBehaviour:
   displayName: Swamp (color5)
   previewColor: {r: 0.3137255, g: 0.43137255, b: 0.27450982, a: 1}
   groundTiles: {fileID: 11400000, guid: 5ab5affff3767ff40b0af02d694c5e0b, type: 2}
-  movementSpeedMultiplier: 0.8
+  movementSpeedMultiplier: 0.25
   generation:
     placementMode: 1
+    referencePlacement: 0
     tags: 4
     fillerWeight: 1
     mapCoverage: 0.03
@@ -35,34 +36,52 @@ MonoBehaviour:
     pondsPer10000Cells: 0
     marshWaterRatio: 0.3
   spawnRules:
-  - label: Dead Trees (waiting for assets)
-    enabled: 0
-    variants: []
+  - label: Swamp Trees
+    enabled: 1
+    variants:
+    - spawnable: {fileID: 11400000, guid: 92f159fa9a95dcb4a98be1bcf4565cf9, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 32b69828e0b78da44af43e617add8d64, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: c87306213536f4c4e9f755509be4b98d, type: 2}
+      weight: 1
+    - spawnable: {fileID: 11400000, guid: 1ef530ee96f2bac4188b025ab0b831ff, type: 2}
+      weight: 1
     allowedTerrain: 2
     placement:
       distribution: 0
-      densityPer1000Cells: 600
+      densityPer1000Cells: 480
       count:
         min: 5
         max: 10
+      limitCount: 1
+      countLimit:
+        min: 0
+        max: 60000
+      absentChance: 0
+      amountVariation: 0.2
+      clusterSize:
+        min: 3
+        max: 8
+      clusterRadius: 3
       useClustering: 1
       clusterNoise:
         scale: 42
         octaves: 4
         lacunarity: 2
         persistence: 0.5
-      clusterThreshold: 0.35
+      clusterThreshold: 0.38
       clusterFalloff: 0.1
-      outsideClusterFactor: 0.4
+      outsideClusterFactor: 0.45
       minSpacingX: 1
       minSpacingY: 0
       minDistanceToOtherObjects: 0
       shoreDistance:
-        min: 2
+        min: 1
         max: 9999
       priority: 20
       positionJitter: 0.3
-    stumpChance: 0
+    stumpChance: 0.03
     companions:
       enabled: 0
       count:
@@ -88,6 +107,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.35
+      clusterSize:
+        min: 1
+        max: 3
+      clusterRadius: 2
       useClustering: 1
       clusterNoise:
         scale: 18

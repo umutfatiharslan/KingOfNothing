@@ -39,8 +39,7 @@ namespace KingOfNothing.Units
                 if (shader != null) lineMaterial = new Material(shader) { name = "Unit Path Line" };
             }
 
-            var lineObject = new GameObject("Path Line");
-            lineObject.transform.SetParent(transform, false);
+            var lineObject = KingOfNothing.Utilities.RuntimeChild.Replace(transform, "Path Line");
             line = lineObject.AddComponent<LineRenderer>();
             line.useWorldSpace = true;
             line.sharedMaterial = lineMaterial;
@@ -52,8 +51,7 @@ namespace KingOfNothing.Units
             line.sortingOrder = sortingOrder;
             line.enabled = false;
 
-            var markerObject = new GameObject("Destination Marker");
-            markerObject.transform.SetParent(transform, false);
+            var markerObject = KingOfNothing.Utilities.RuntimeChild.Replace(transform, "Destination Marker");
             marker = markerObject.AddComponent<SpriteRenderer>();
             marker.sprite = Unit.RingSprite;
             marker.color = markerColor;

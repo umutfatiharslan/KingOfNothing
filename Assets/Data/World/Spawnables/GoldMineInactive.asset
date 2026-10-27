@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10a4a630219e95a47ad23e0674ee93b3, type: 3}
+  m_Name: GoldMineInactive
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.SpawnableDefinition
+  displayName: Gold Mine (inactive)
+  kind: 6
+  frames:
+  - {fileID: 21300000, guid: 1fbda4aa397309e43b846e1091221bc4, type: 3}
+  animate: 0
+  animationFps: 10
+  prefabOverride: {fileID: 0}
+  footprint: {x: 3, y: 2}
+  groundInset: 0.25
+  blocksBuilding: 1
+  walkThrough: 0
+  walkThroughSpeed: 1
+  hitboxSize: {x: 2.8, y: 1.7}
+  hitboxOffset: {x: 0, y: -0.1}
+  fadeWhenHidingCharacter: 1
+  movementConfigured: 1
+  resourceType: 4
+  maxHealth: 500
+  yieldAmount: 50
+  drops: []
+  stackSize: 10
+  damagedFrames: []
+  movableByCharacters: 0
+  interactionTool: 0
+  dataVersion: 2
+  stump: {fileID: 0}

@@ -19,7 +19,7 @@ namespace KingOfNothing.World.Navigation
         readonly int width, height, count;
         /// <summary>Cost to enter each cell; infinity = not walkable.</summary>
         readonly float[] cost;
-        readonly float minCost;
+        float minCost;
 
         readonly float[] g;
         readonly int[] parent;
@@ -57,6 +57,21 @@ namespace KingOfNothing.World.Navigation
             parent = new int[count];
             openStamp = new int[count];
             closedStamp = new int[count];
+        }
+
+        /// <summary>Recomputes one cell after an object appeared / disappeared there.</summary>
+        public void RefreshCell(int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= width || y >= height) return;
+            var c = new Vector2Int(x, y);
+            int i = x + y * width;
+            if (!map.IsWalkable(c))
+            {
+                cost[i] = float.PositiveInfinity;
+                return;
+            }
+            cost[i] = 1f / Mathf.Max(0.01f, map.SpeedMultiplierAt(c));
+            if (cost[i] < minCost) minCost = cost[i];
         }
 
         bool Walkable(int x, int y) => x >= 0 && y >= 0 && x < width && y < height && !float.IsPositiveInfinity(cost[x + y * width]);

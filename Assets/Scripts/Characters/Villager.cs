@@ -126,8 +126,7 @@ namespace KingOfNothing.Characters
 
         void CreateNameTag()
         {
-            var go = new GameObject("Name Tag");
-            go.transform.SetParent(transform, false);
+            var go = KingOfNothing.Utilities.RuntimeChild.Replace(transform, "Name Tag");
             go.transform.localPosition = nameTagOffset;
             nameTag = go.AddComponent<TextMesh>();
             nameTag.text = identity.displayName;

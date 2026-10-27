@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using KingOfNothing.World;
+using KingOfNothing.World.Objects;
 using UnityEngine;
 
 namespace KingOfNothing.Units
@@ -7,8 +8,10 @@ namespace KingOfNothing.Units
     /// <summary>
     /// A unit that can be selected and moved. The object's position is the point where the feet touch the
     /// ground; the visual (body) is a child slightly above it. Movement follows a path from the map's
-    /// pathfinder, so units walk around deep water instead of getting stuck at the bank; terrain changes the
-    /// speed (swamp x0.25, shallow water x0.5 - set in the biomes and MapData).
+    /// pathfinder, so units walk around deep water and solid objects instead of getting stuck; terrain and
+    /// walk-through objects change the speed (swamp x0.25, shallow water x0.5, bush x0.7 - set in the biomes,
+    /// the MovementSettings asset and the object assets). The hitboxes of solid objects near the unit
+    /// (CharacterProximitySystem) stop it and make it slide along them.
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
     public class Unit : MonoBehaviour
@@ -21,11 +24,15 @@ namespace KingOfNothing.Units
         [SerializeField] bool useTerrainSpeed = true;
         [Tooltip("Use the map pathfinder (off = walk in a straight line).")]
         [SerializeField] bool usePathfinding = true;
+        [Tooltip("Collide with the hitboxes of solid objects (trees, stones...).")]
+        [SerializeField] bool collideWithObjects = true;
         [Tooltip("How far the body sinks while wading in water (units), so it looks like walking in water.")]
         [Min(0f)] [SerializeField] float waterSinkDepth = 0.25f;
 
         [Header("Visual")]
         [SerializeField] SpriteRenderer body;
+        [Tooltip("All pawn animations (idle, run, tools, carrying). Empty = only the two frame lists below.")]
+        [SerializeField] PawnAnimationSet animations;
         [SerializeField] Sprite[] idleFrames;
         [SerializeField] Sprite[] runFrames;
         [Min(0f)] [SerializeField] float fps = 10f;
@@ -50,6 +57,10 @@ namespace KingOfNothing.Units
         int pathIndex;
         Vector3 bodyBasePosition;
         float currentSink;
+        Vector2 finalDestination;
+        float bestWaypointDistance;
+        float lastProgressTime;
+        int repathAttempts;
 
         /// <summary>Remaining waypoints (world positions); the last one is the destination.</summary>
         public IReadOnlyList<Vector2> Path => path;
@@ -57,8 +68,18 @@ namespace KingOfNothing.Units
         public Vector2 Destination => path.Count > 0 ? path[path.Count - 1] : target;
         /// <summary>Speed multipliers from traits etc. (1 = normal).</summary>
         public float SpeedModifier { get; set; } = 1f;
+        /// <summary>Speed multiplier of the current work (carrying something = 0.85...).</summary>
+        public float WorkSpeedModifier { get; set; } = 1f;
+        /// <summary>Sorting order of the body (objects carried by the unit are drawn just above it).</summary>
+        public int SortingOrder => body != null ? body.sortingOrder : MapSorting.Order(transform.position.x, transform.position.y);
+        /// <summary>Jobs (hit, carry...) of this unit.</summary>
+        public UnitWorker Worker { get; private set; }
 
-        void OnEnable() => All.Add(this);
+        void OnEnable()
+        {
+            All.Add(this);
+            CharacterProximitySystem.Ensure();
+        }
         void OnDisable() => All.Remove(this);
 
         void Awake()
@@ -67,6 +88,8 @@ namespace KingOfNothing.Units
             if (body != null) bodyBasePosition = body.transform.localPosition;
             target = transform.position;
             if (GetComponent<UnitPathIndicator>() == null) gameObject.AddComponent<UnitPathIndicator>();
+            Worker = GetComponent<UnitWorker>();
+            if (Worker == null) Worker = gameObject.AddComponent<UnitWorker>();
             CreateSelectionRing();
             SetSelected(false);
             // Units should not animate in sync
@@ -81,6 +104,50 @@ namespace KingOfNothing.Units
             runFrames = run;
         }
 
+        public PawnAnimationSet Animations
+        {
+            get => animations;
+            set => animations = value;
+        }
+
+        // ------------------------------------------------------------------ work animation state
+
+        InteractionTool workTool;
+        bool working;
+        float swingStart = -1f, swingDuration;
+        ResourceType carrying;
+
+        /// <summary>Tool of the last action (its idle / run animations stay until the next order).</summary>
+        public InteractionTool WorkTool => workTool;
+
+        /// <summary>Back to the plain animations (Pawn_Idle / Pawn_Run): a move order without an action.</summary>
+        public void ClearWorkAnimation()
+        {
+            SetWorkAnimation(InteractionTool.Auto, false);
+            carrying = ResourceType.None;
+        }
+
+        /// <summary>Tool in hand (walking to / standing at an object) and whether the unit is working with it.</summary>
+        public void SetWorkAnimation(InteractionTool tool, bool atWork)
+        {
+            workTool = tool;
+            working = atWork && tool != InteractionTool.Auto;
+            if (!working) swingStart = -1f;
+        }
+
+        /// <summary>Plays the interact animation of the current tool once, over the given time (one hit).</summary>
+        public void PlaySwing(float duration)
+        {
+            swingStart = Time.time;
+            swingDuration = Mathf.Max(0.05f, duration);
+        }
+
+        /// <summary>What the unit carries (wood / gold / meat have their own pawn sprites; None = nothing or another object).</summary>
+        public void SetCarrying(ResourceType resource) => carrying = resource;
+
+        /// <summary>True if the pawn sprite itself shows this carried resource (the object is hidden then).</summary>
+        public bool ShowsCarried(ResourceType resource) => animations != null && animations.Carrying(resource, false) != null;
+
         public void SetSelected(bool selected)
         {
             IsSelected = selected;
@@ -89,7 +156,15 @@ namespace KingOfNothing.Units
 
         public void MoveTo(Vector2 destination)
         {
+            repathAttempts = 0;
+            PlanPath(destination);
+        }
+
+        void PlanPath(Vector2 destination)
+        {
+            finalDestination = destination;
             target = destination;
+            ResetProgress();
             path.Clear();
             pathIndex = 0;
             var map = MapData.Instance;
@@ -103,6 +178,39 @@ namespace KingOfNothing.Units
             }
             else path.Add(destination);
             IsMoving = true;
+        }
+
+        /// <summary>Walks in a straight line (short distances next to a target; collisions still apply).</summary>
+        public void MoveStraight(Vector2 destination)
+        {
+            repathAttempts = 0;
+            finalDestination = destination;
+            target = destination;
+            ResetProgress();
+            path.Clear();
+            pathIndex = 0;
+            path.Add(destination);
+            IsMoving = true;
+        }
+
+        /// <summary>Turns the body towards a direction.</summary>
+        public void Face(Vector2 direction)
+        {
+            if (body != null && Mathf.Abs(direction.x) > 0.01f) body.flipX = direction.x < 0;
+        }
+
+        float lungeTime;
+        Vector2 lungeDirection;
+        float lungeDistance;
+        const float LungeDuration = 0.22f;
+
+        /// <summary>Short lean of the body towards a direction (hitting something).</summary>
+        public void PlayLunge(Vector2 direction, float distance)
+        {
+            Face(direction);
+            lungeDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.zero;
+            lungeDistance = distance;
+            lungeTime = LungeDuration;
         }
 
         public void Stop()
@@ -132,12 +240,14 @@ namespace KingOfNothing.Units
             Vector2 waypoint = path[pathIndex];
             Vector2 toWaypoint = waypoint - position;
             float terrain = useTerrainSpeed && MapData.Instance != null && MapData.Instance.IsReady ? MapData.Instance.SpeedMultiplierAt(position) : 1f;
-            float step = moveSpeed * SpeedModifier * terrain * Time.deltaTime;
+            float step = moveSpeed * SpeedModifier * WorkSpeedModifier * terrain * Time.deltaTime;
 
             if (toWaypoint.magnitude <= step)
             {
                 transform.position = waypoint;
                 pathIndex++;
+                repathAttempts = 0;
+                ResetProgress();
                 if (pathIndex >= path.Count)
                 {
                     target = waypoint;
@@ -145,34 +255,148 @@ namespace KingOfNothing.Units
                 }
                 return;
             }
-            transform.position = position + toWaypoint.normalized * step;
+            Vector2 next = position + toWaypoint.normalized * step;
+            if (collideWithObjects) next = ResolveCollisions(next);
+            transform.position = next;
             if (body != null && Mathf.Abs(toWaypoint.x) > 0.01f) body.flipX = toWaypoint.x < 0;
+            CheckStuck(Vector2.Distance(next, waypoint));
         }
 
-        /// <summary>Sinks the body a little while the unit stands in water.</summary>
+        // ------------------------------------------------------------------ collisions
+
+        /// <summary>Pushes the feet (a circle) out of the hitboxes of the solid objects near the unit.</summary>
+        Vector2 ResolveCollisions(Vector2 p)
+        {
+            var system = CharacterProximitySystem.Instance;
+            var map = MapData.Instance;
+            if (system == null || map == null) return p;
+            float radius = map.Movement.characterCollisionRadius;
+            var solids = system.SolidsNear(this);
+            for (int pass = 0; pass < 2; pass++)
+            {
+                for (int i = 0; i < solids.Count; i++)
+                {
+                    var o = solids[i];
+                    if (o == null) continue;
+                    var box = o.Hitbox;
+                    var closest = new Vector2(Mathf.Clamp(p.x, box.xMin, box.xMax), Mathf.Clamp(p.y, box.yMin, box.yMax));
+                    var away = p - closest;
+                    float distance = away.magnitude;
+                    if (distance >= radius) continue;
+                    if (distance > 0.0001f)
+                    {
+                        p += away / distance * (radius - distance);
+                        continue;
+                    }
+                    // Centre inside the box: leave by the shortest side
+                    float left = p.x - box.xMin, right = box.xMax - p.x, down = p.y - box.yMin, up = box.yMax - p.y;
+                    float min = Mathf.Min(Mathf.Min(left, right), Mathf.Min(down, up));
+                    if (min == left) p.x = box.xMin - radius;
+                    else if (min == right) p.x = box.xMax + radius;
+                    else if (min == down) p.y = box.yMin - radius;
+                    else p.y = box.yMax + radius;
+                }
+            }
+            return p;
+        }
+
+        void ResetProgress()
+        {
+            bestWaypointDistance = float.MaxValue;
+            lastProgressTime = Time.time;
+        }
+
+        /// <summary>No progress towards the waypoint for a while (an object appeared on the way): plan again.</summary>
+        void CheckStuck(float waypointDistance)
+        {
+            if (waypointDistance < bestWaypointDistance - 0.02f)
+            {
+                bestWaypointDistance = waypointDistance;
+                lastProgressTime = Time.time;
+                return;
+            }
+            var map = MapData.Instance;
+            float limit = map != null ? map.Movement.stuckRepathTime : 0.75f;
+            if (Time.time - lastProgressTime < limit) return;
+            if (++repathAttempts > 3)
+            {
+                Stop();
+                return;
+            }
+            PlanPath(finalDestination);
+        }
+
+        /// <summary>Sinks the body a little while the unit stands in water, and plays the hit lunge.</summary>
         void UpdateWading()
         {
-            if (body == null || waterSinkDepth <= 0f) return;
+            if (body == null) return;
             var map = MapData.Instance;
-            bool inWater = map != null && map.IsReady && map.IsWater(MapData.WorldToCell(transform.position));
+            bool inWater = waterSinkDepth > 0f && map != null && map.IsReady && map.IsWater(MapData.WorldToCell(transform.position));
             float wanted = inWater ? waterSinkDepth : 0f;
-            if (Mathf.Approximately(currentSink, wanted)) return;
+            bool lunging = lungeTime > 0f;
+            if (Mathf.Approximately(currentSink, wanted) && !lunging && !lungedLastFrame) return;
             currentSink = Mathf.MoveTowards(currentSink, wanted, Time.deltaTime * 2f);
-            body.transform.localPosition = bodyBasePosition - new Vector3(0f, currentSink, 0f);
+
+            Vector3 lunge = Vector3.zero;
+            if (lunging)
+            {
+                lungeTime = Mathf.Max(0f, lungeTime - Time.deltaTime);
+                float t = 1f - lungeTime / LungeDuration;
+                lunge = (Vector3)(lungeDirection * (Mathf.Sin(t * Mathf.PI) * lungeDistance));
+            }
+            lungedLastFrame = lunging;
+            body.transform.localPosition = bodyBasePosition - new Vector3(0f, currentSink, 0f) + lunge;
         }
+
+        bool lungedLastFrame;
 
         void Animate()
         {
-            var frames = IsMoving && runFrames != null && runFrames.Length > 0 ? runFrames : idleFrames;
-            if (body == null || frames == null || frames.Length == 0) return;
+            if (body == null) return;
+            // One swing of the interact animation per hit
+            if (animations != null && working && swingStart >= 0f)
+            {
+                var tool = animations.ForTool(workTool);
+                if (tool != null && tool.interact.Length > 0)
+                {
+                    float t = (Time.time - swingStart) / swingDuration;
+                    if (t < 1f)
+                    {
+                        currentFrames = tool.interact;
+                        body.sprite = tool.interact[Mathf.Clamp((int)(t * tool.interact.Length), 0, tool.interact.Length - 1)];
+                        return;
+                    }
+                }
+            }
 
+            var frames = PickLoopFrames();
+            if (frames == null || frames.Length == 0) return;
             if (frames != currentFrames)
             {
                 currentFrames = frames;
                 animationTime = 0f;
             }
             animationTime += Time.deltaTime;
-            body.sprite = frames[(int)(animationTime * fps) % frames.Length];
+            float speed = animations != null ? animations.framesPerSecond : fps;
+            body.sprite = frames[(int)(animationTime * speed) % frames.Length];
+        }
+
+        Sprite[] PickLoopFrames()
+        {
+            if (animations == null)
+                return IsMoving && runFrames != null && runFrames.Length > 0 ? runFrames : idleFrames;
+
+            var carried = animations.Carrying(carrying, IsMoving);
+            if (carried != null) return carried;
+            var tool = animations.ForTool(workTool);
+            if (tool != null)
+            {
+                var toolFrames = IsMoving ? tool.run : tool.idle;
+                if (toolFrames != null && toolFrames.Length > 0) return toolFrames;
+            }
+            var basic = IsMoving ? animations.run : animations.idle;
+            if (basic != null && basic.Length > 0) return basic;
+            return IsMoving && runFrames != null && runFrames.Length > 0 ? runFrames : idleFrames;
         }
 
         void UpdateSorting()
@@ -198,8 +422,7 @@ namespace KingOfNothing.Units
 
         void CreateSelectionRing()
         {
-            var go = new GameObject("Selection Ring");
-            go.transform.SetParent(transform, false);
+            var go = KingOfNothing.Utilities.RuntimeChild.Replace(transform, "Selection Ring");
             go.transform.localScale = new Vector3(selectionSize.x, selectionSize.y * 2f, 1f);
             ring = go.AddComponent<SpriteRenderer>();
             ring.sprite = RingSprite;

@@ -22,14 +22,11 @@ namespace KingOfNothing.World
         [SerializeField] List<BiomeDefinition> biomes = new List<BiomeDefinition>();
 
         [Header("Movement")]
-        [Tooltip("Characters can walk this many cells into the water (counted from the shore).")]
-        [Min(0)] [SerializeField] int wadeableWaterDepth = 5;
-        [Tooltip("Speed multiplier while wading in shallow water.")]
-        [Range(0.05f, 1f)] [SerializeField] float shallowWaterSpeed = 0.5f;
-        [Tooltip("Deeper water needs a boat (a craftable item planned for later). Turn on to let characters walk everywhere for tests.")]
-        [SerializeField] bool deepWaterWalkable;
-        [Tooltip("Speed multiplier in deep water when Deep Water Walkable is on.")]
-        [Range(0.05f, 1f)] [SerializeField] float deepWaterSpeed = 0.35f;
+        [Tooltip("Water rules, interaction radius, transparency... (asset, so changes made in Play mode are kept). " +
+                 "Empty = Assets/Data/World/MovementSettings is used (created automatically in the editor).")]
+        [SerializeField] MovementSettings movement;
+        [Tooltip("Hitting, carrying, drops, selection colours... Empty = Assets/Data/World/InteractionSettings (created automatically in the editor).")]
+        [SerializeField] InteractionSettings interaction;
 
         // Only filled when the generator is told to keep its result in the scene
         [SerializeField, HideInInspector] byte[] savedTerrain;
@@ -39,6 +36,11 @@ namespace KingOfNothing.World
         [NonSerialized] short[] biomeIndex;
         [NonSerialized] bool[] snowBlocked;
         [NonSerialized] WorldObject[] objects;
+        [NonSerialized] Dictionary<int, WorldObject> objectsByUid = new Dictionary<int, WorldObject>();
+        /// <summary>Objects hidden under another one on the same cell (developer mode allows overlapping).</summary>
+        [NonSerialized] Dictionary<int, List<WorldObject>> buried = new Dictionary<int, List<WorldObject>>();
+        [NonSerialized] int nextUid = 1;
+        [NonSerialized] bool interactionChecked;
         /// <summary>Distance (cells) of every water cell to the nearest land; 0 on land.</summary>
         [NonSerialized] byte[] waterDepth;
         [NonSerialized] GridPathfinder pathfinder;
@@ -50,7 +52,36 @@ namespace KingOfNothing.World
         public int Height => height;
         public bool IsReady => terrain != null;
         public IReadOnlyList<BiomeDefinition> Biomes => biomes;
-        public int WadeableWaterDepth => wadeableWaterDepth;
+        public int WadeableWaterDepth => Movement.wadeableWaterDepth;
+
+        /// <summary>Interaction rules (never null).</summary>
+        public InteractionSettings Interaction
+        {
+            get
+            {
+#if UNITY_EDITOR
+                if (interaction == null) interaction = InteractionSettings.LoadOrCreateDefault();
+                if (!interactionChecked && interaction != null)
+                {
+                    interactionChecked = true;
+                    interaction.EditorEnsureDefaults();
+                }
+#endif
+                return interaction != null ? interaction : InteractionSettings.Fallback;
+            }
+        }
+
+        /// <summary>Movement rules (never null).</summary>
+        public MovementSettings Movement
+        {
+            get
+            {
+#if UNITY_EDITOR
+                if (movement == null) movement = MovementSettings.LoadOrCreateDefault();
+#endif
+                return movement != null ? movement : MovementSettings.Fallback;
+            }
+        }
 
         /// <summary>A* pathfinder on this map (created on first use).</summary>
         public GridPathfinder Pathfinder
@@ -89,6 +120,9 @@ namespace KingOfNothing.World
             terrain = (CellTerrain[])layout.Terrain.Clone();
             biomeIndex = (short[])layout.Biome.Clone();
             objects = new WorldObject[width * height];
+            objectsByUid.Clear();
+            buried.Clear();
+            nextUid = 1;
             snowBlocked = null;
             pathfinder = null;
             BuildWaterDepth();
@@ -114,6 +148,9 @@ namespace KingOfNothing.World
             terrain = null;
             biomeIndex = null;
             objects = null;
+            objectsByUid.Clear();
+            buried.Clear();
+            nextUid = 1;
             snowBlocked = null;
             waterDepth = null;
             pathfinder = null;
@@ -127,6 +164,8 @@ namespace KingOfNothing.World
             for (int i = 0; i < terrain.Length; i++) terrain[i] = (CellTerrain)savedTerrain[i];
             biomeIndex = savedBiomes != null && savedBiomes.Length == terrain.Length ? (short[])savedBiomes.Clone() : new short[terrain.Length];
             objects = new WorldObject[terrain.Length];
+            objectsByUid.Clear();
+            nextUid = 1;
             BuildWaterDepth();
         }
 
@@ -194,26 +233,51 @@ namespace KingOfNothing.World
 
         public bool IsWater(Vector2Int cell) => GetTerrain(cell) != CellTerrain.Land;
 
-        /// <summary>Land, or water at most Wadeable Water Depth cells from the shore (deeper water needs a boat).</summary>
+        /// <summary>
+        /// Land, or water at most Wadeable Water Depth cells from the shore (deeper water needs a boat), without a
+        /// solid object on it (trees, stones... ; bushes, grass and bones can be walked through).
+        /// </summary>
         public bool IsWalkable(Vector2Int cell)
+        {
+            if (!IsTerrainWalkable(cell)) return false;
+            var o = objects != null ? objects[Index(cell)] : null;
+            return o == null || !o.BlocksMovement;
+        }
+
+        /// <summary>Walkable by terrain only (objects ignored).</summary>
+        public bool IsTerrainWalkable(Vector2Int cell)
         {
             if (terrain == null || !InBounds(cell)) return false;
             int i = Index(cell);
             if (terrain[i] == CellTerrain.Land) return true;
-            return deepWaterWalkable || waterDepth[i] <= wadeableWaterDepth;
+            var m = Movement;
+            return m.deepWaterWalkable || waterDepth[i] <= m.wadeableWaterDepth;
         }
 
         public bool IsWalkable(Vector2 world) => IsWalkable(WorldToCell(world));
 
-        /// <summary>Movement speed multiplier of a cell: biome speed on land (swamp 0.25), shallow water speed in water.</summary>
+        /// <summary>
+        /// Movement speed multiplier of a cell: biome speed on land (swamp 0.25), shallow water speed in water,
+        /// multiplied by the speed inside a walk-through object (bush 0.7).
+        /// </summary>
         public float SpeedMultiplierAt(Vector2Int cell)
+        {
+            float speed = TerrainSpeedAt(cell);
+            var o = objects != null && InBounds(cell) ? objects[Index(cell)] : null;
+            if (o != null && !o.BlocksMovement) speed *= o.WalkThroughSpeed;
+            return speed;
+        }
+
+        /// <summary>Speed multiplier of the terrain only (objects ignored).</summary>
+        public float TerrainSpeedAt(Vector2Int cell)
         {
             if (terrain == null || !InBounds(cell)) return 1f;
             int i = Index(cell);
             var biome = GetBiome(cell);
             float biomeSpeed = biome != null ? biome.MovementSpeedMultiplier : 1f;
             if (terrain[i] == CellTerrain.Land) return biomeSpeed;
-            float water = waterDepth[i] <= wadeableWaterDepth ? shallowWaterSpeed : deepWaterSpeed;
+            var m = Movement;
+            float water = waterDepth[i] <= m.wadeableWaterDepth ? m.shallowWaterSpeed : m.deepWaterSpeed;
             // Pools inside a biome (swamp marsh) are never faster than the biome itself
             return Mathf.Min(water, biomeSpeed);
         }
@@ -278,31 +342,131 @@ namespace KingOfNothing.World
 
         // ------------------------------------------------------------------ objects
 
-        public void RegisterObject(WorldObject worldObject)
+        /// <summary>
+        /// Forgets every object at once (their GameObjects are destroyed by the caller). Used when the objects
+        /// are rebuilt from the original map.
+        /// </summary>
+        public void ClearObjects()
         {
-            if (objects == null || worldObject == null) return;
+            if (objects != null) objects = new WorldObject[width * height];
+            pathfinder = null;
+            objectsByUid.Clear();
+            buried.Clear();
+            nextUid = 1;
+        }
+
+        /// <summary>Next id given to a new object.</summary>
+        public int NextUid
+        {
+            get => nextUid;
+            set => nextUid = Mathf.Max(1, value);
+        }
+
+        public int ObjectCount => objectsByUid.Count;
+
+        /// <summary>Puts the object on its cells and gives it an id (keeps the requested one if it is free).</summary>
+        /// <returns>The id of the object.</returns>
+        public int RegisterObject(WorldObject worldObject, int requestedUid = 0)
+        {
+            if (objects == null || worldObject == null) return requestedUid;
+            int uid = requestedUid;
+            if (uid <= 0 || (objectsByUid.TryGetValue(uid, out var holder) && holder != null && holder != worldObject))
+            {
+                if (uid > 0) Debug.LogWarning($"[MapData] Object id {uid} is already used; {worldObject.name} gets a new id.", worldObject);
+                uid = nextUid;
+            }
+            if (uid >= nextUid) nextUid = uid + 1;
+            objectsByUid[uid] = worldObject;
+
             var area = worldObject.Area;
             for (int y = area.yMin; y < area.yMax; y++)
             for (int x = area.xMin; x < area.xMax; x++)
             {
                 var c = new Vector2Int(x, y);
-                if (InBounds(c)) objects[Index(c)] = worldObject;
+                if (!InBounds(c)) continue;
+                int i = Index(c);
+                var previous = objects[i];
+                if (previous != null && previous != worldObject)
+                {
+                    // Overlap (developer mode): keep the old object reachable once the new one leaves
+                    if (!buried.TryGetValue(i, out var list)) buried[i] = list = new List<WorldObject>();
+                    if (!list.Contains(previous)) list.Add(previous);
+                }
+                objects[i] = worldObject;
+                pathfinder?.RefreshCell(x, y);
             }
+            return uid;
         }
 
         public void UnregisterObject(WorldObject worldObject)
         {
             if (objects == null || worldObject == null) return;
+            if (objectsByUid.TryGetValue(worldObject.Uid, out var holder) && holder == worldObject) objectsByUid.Remove(worldObject.Uid);
             var area = worldObject.Area;
             for (int y = area.yMin; y < area.yMax; y++)
             for (int x = area.xMin; x < area.xMax; x++)
             {
                 var c = new Vector2Int(x, y);
-                if (InBounds(c) && objects[Index(c)] == worldObject) objects[Index(c)] = null;
+                if (!InBounds(c)) continue;
+                int i = Index(c);
+                buried.TryGetValue(i, out var list);
+                if (objects[i] == worldObject)
+                {
+                    WorldObject next = null;
+                    while (list != null && list.Count > 0 && next == null)
+                    {
+                        next = list[list.Count - 1];
+                        list.RemoveAt(list.Count - 1);
+                        if (next == null || objectsByUid.ContainsKey(next.Uid) == false) next = null;
+                    }
+                    objects[i] = next;
+                    pathfinder?.RefreshCell(x, y);
+                }
+                else list?.Remove(worldObject);
+                if (list != null && list.Count == 0) buried.Remove(i);
             }
         }
 
+        /// <summary>Object with the given id, or null.</summary>
+        public WorldObject FindObject(int uid) =>
+            objectsByUid.TryGetValue(uid, out var o) && o != null ? o : null;
+
+        /// <summary>True if another object than the given ones covers any cell of the area (or a cell is not walkable land / shallow water).</summary>
+        public bool IsAreaBlocked(RectInt area, ICollection<WorldObject> ignore = null)
+        {
+            for (int y = area.yMin; y < area.yMax; y++)
+            for (int x = area.xMin; x < area.xMax; x++)
+            {
+                var c = new Vector2Int(x, y);
+                if (!IsTerrainWalkable(c)) return true;
+                var o = GetObjectAt(c);
+                if (o != null && (ignore == null || !ignore.Contains(o))) return true;
+                if (buried.TryGetValue(Index(c), out var list))
+                    foreach (var b in list)
+                        if (b != null && (ignore == null || !ignore.Contains(b))) return true;
+            }
+            return false;
+        }
+
         public WorldObject GetObjectAt(Vector2Int cell) => objects != null && InBounds(cell) ? objects[Index(cell)] : null;
+
+        /// <summary>Adds every object covering cells of the area (also those hidden under another one), without duplicates.</summary>
+        public void CollectObjects(RectInt area, List<WorldObject> into)
+        {
+            if (objects == null) return;
+            for (int y = area.yMin; y < area.yMax; y++)
+            for (int x = area.xMin; x < area.xMax; x++)
+            {
+                var c = new Vector2Int(x, y);
+                if (!InBounds(c)) continue;
+                int i = Index(c);
+                var o = objects[i];
+                if (o != null && !into.Contains(o)) into.Add(o);
+                if (buried.TryGetValue(i, out var list))
+                    foreach (var b in list)
+                        if (b != null && !into.Contains(b)) into.Add(b);
+            }
+        }
 
         /// <summary>
         /// Can a building / block be placed on these cells? Needs land everywhere and no object that blocks

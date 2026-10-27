@@ -111,7 +111,7 @@ namespace KingOfNothing.World
             return config;
         }
 
-        /// <summary>Every object the map can contain (rules, companions, stumps, extra developer objects).</summary>
+        /// <summary>Every object the map can contain (rules, companions, stumps, drops, extra developer objects).</summary>
         public List<SpawnableDefinition> CollectAllSpawnables()
         {
             var result = new List<SpawnableDefinition>();
@@ -120,6 +120,8 @@ namespace KingOfNothing.World
                 if (s == null || result.Contains(s)) return;
                 result.Add(s);
                 Add(s.Stump);
+                // Items it drops (wood, gold, stones...) must be known to rebuild the edited map
+                if (s.Drops != null) foreach (var d in s.Drops) if (d != null) Add(d.item);
             }
             void AddRule(SpawnRule rule)
             {

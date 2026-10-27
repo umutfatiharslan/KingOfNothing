@@ -22,7 +22,19 @@ MonoBehaviour:
   footprint: {x: 3, y: 2}
   groundInset: 0.25
   blocksBuilding: 1
+  walkThrough: 0
+  walkThroughSpeed: 1
+  hitboxSize: {x: 2.8, y: 1.7}
+  hitboxOffset: {x: 0, y: -0.1}
+  fadeWhenHidingCharacter: 1
+  movementConfigured: 1
   resourceType: 4
   maxHealth: 500
   yieldAmount: 50
+  drops: []
+  stackSize: 10
+  damagedFrames: []
+  movableByCharacters: 0
+  interactionTool: 0
+  dataVersion: 2
   stump: {fileID: 0}

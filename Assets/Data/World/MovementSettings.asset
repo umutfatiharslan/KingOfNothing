@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c9ffead7d337704884b4701bb09f974, type: 3}
+  m_Name: MovementSettings
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.MovementSettings
+  wadeableWaterDepth: 5
+  shallowWaterSpeed: 0.5
+  deepWaterWalkable: 0
+  deepWaterSpeed: 0.35
+  interactionRadius: 5
+  proximityUpdateInterval: 0
+  characterCollisionRadius: 0.2
+  characterBodySize: {x: 0.6, y: 1.1}
+  stuckRepathTime: 0.75
+  occludedAlpha: 0.5
+  fadeSpeed: 6
+  showHitboxes: 0
+  hitboxColor: {r: 1, g: 0.3, b: 0.2, a: 0.9}

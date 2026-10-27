@@ -93,7 +93,8 @@ namespace KingOfNothing.CameraControl
                 }
 
                 float scroll = mouse.scroll.ReadValue().y;
-                if (Mathf.Abs(scroll) > 0.01f)
+                // No zoom while the mouse is over a panel (developer tools, action menu...)
+                if (Mathf.Abs(scroll) > 0.01f && !KingOfNothing.Utilities.ScreenUi.IsPointerOver(mouse.position.ReadValue()))
                     targetZoom = Mathf.Clamp(targetZoom - Mathf.Sign(scroll) * zoomStep * Mathf.Max(1f, targetZoom / referenceZoom), minZoom, maxZoom);
 
                 HandleDrag(mouse, mousePosition);

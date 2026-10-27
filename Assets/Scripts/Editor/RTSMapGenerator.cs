@@ -104,12 +104,16 @@ namespace KingOfNothing.EditorTools
 
             // World
             var world = new GameObject("World");
-            world.AddComponent<MapData>();
+            var mapDataComponent = world.AddComponent<MapData>();
+            var mapDataSo = new SerializedObject(mapDataComponent);
+            mapDataSo.FindProperty("movement").objectReferenceValue = MovementSettings.LoadOrCreateDefault();
+            mapDataSo.FindProperty("interaction").objectReferenceValue = InteractionSettings.LoadOrCreateDefault();
+            mapDataSo.ApplyModifiedPropertiesWithoutUndo();
             var generator = world.AddComponent<MapGenerator>();
             var so = new SerializedObject(generator);
             so.FindProperty("settings").objectReferenceValue = settings;
             so.FindProperty("cameraController").objectReferenceValue = cameraController;
-            so.FindProperty("editLog").objectReferenceValue = AssetDatabase.LoadAssetAtPath<MapEditLog>(DefaultMapAssetsBuilder.EditLogPath);
+            so.FindProperty("originalMap").objectReferenceValue = OriginalMapAsset.LoadOrCreateDefault();
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var devSo = new SerializedObject(devTools);

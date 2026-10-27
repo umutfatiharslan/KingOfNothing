@@ -1,4 +1,6 @@
+using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace KingOfNothing.World.Objects
 {
@@ -8,14 +10,22 @@ namespace KingOfNothing.World.Objects
         /// <summary>Height of the object's ground contact point inside its bottom cell.</summary>
         public const float BaseOffsetY = 0.15f;
 
+        /// <summary>Ground contact point of an object (sorting and placement use it).</summary>
+        public static Vector2 BasePoint(Vector2Int footprint, Vector2Int cell, Vector2 offset) =>
+            new Vector2(cell.x + footprint.x * 0.5f + offset.x, cell.y + BaseOffsetY + offset.y);
+
         /// <param name="cell">Bottom-left cell of the footprint.</param>
         /// <param name="offset">Small random shift inside the cell.</param>
-        public static WorldObject Create(SpawnableDefinition definition, Vector2Int cell, Vector2 offset, Transform parent, MapData map)
+        /// <param name="uid">Id the object must keep (original map / edited map file). 0 = next free id.</param>
+        /// <param name="configure">Runs after Initialize and before the object is announced (AnyCreated).</param>
+        public static WorldObject Create(SpawnableDefinition definition, Vector2Int cell, Vector2 offset, Transform parent, MapData map,
+            int uid = 0, Action<WorldObject> configure = null)
         {
             if (definition == null) return null;
             var footprint = definition.Footprint;
-            float baseX = cell.x + footprint.x * 0.5f + offset.x;
-            float baseY = cell.y + BaseOffsetY + offset.y;
+            var basePoint = BasePoint(footprint, cell, offset);
+            float baseX = basePoint.x;
+            float baseY = basePoint.y;
 
             GameObject go;
             if (definition.PrefabOverride != null)
@@ -50,7 +60,10 @@ namespace KingOfNothing.World.Objects
 
             var worldObject = go.GetComponent<WorldObject>();
             if (worldObject == null) worldObject = AddComponentForKind(go, definition.Kind);
-            worldObject.Initialize(definition, cell, map);
+            worldObject.AssignUid(uid);
+            worldObject.Initialize(definition, cell, offset, map);
+            configure?.Invoke(worldObject);
+            WorldObject.RaiseCreated(worldObject);
             return worldObject;
         }
 

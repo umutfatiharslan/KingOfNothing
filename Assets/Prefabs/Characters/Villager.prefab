@@ -186,7 +186,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.Units.Unit
   moveSpeed: 3
   useTerrainSpeed: 1
+  usePathfinding: 1
+  collideWithObjects: 1
+  waterSinkDepth: 0.25
   body: {fileID: 8754380273933319773}
+  animations: {fileID: 11400000, guid: 67d756a3e7220bd4d90e9cd31c34e4df, type: 2}
   idleFrames:
   - {fileID: -5948806968594788206, guid: 4c87a6310f87c47f1b785669e6191f00, type: 3}
   - {fileID: -3890830800090718979, guid: 4c87a6310f87c47f1b785669e6191f00, type: 3}

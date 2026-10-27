@@ -11,13 +11,13 @@ namespace KingOfNothing.World.Objects
             var map = MapData.Instance;
             var origin = Cell;
             var parent = transform.parent;
+            var tree = Definition;
             Remove();
 
+            // The stump knows its tree before it is announced, so the change history records the link
             if (stumpDefinition != null)
-            {
-                var stump = WorldObjectFactory.Create(stumpDefinition, origin, Vector2.zero, parent, map) as StumpObject;
-                if (stump != null) stump.SetOriginalTree(Definition);
-            }
+                WorldObjectFactory.Create(stumpDefinition, origin, Vector2.zero, parent, map,
+                    configure: created => created.SetLinkedDefinition(tree));
         }
     }
 }

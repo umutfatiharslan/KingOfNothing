@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 301ddb26e4dea6a43b0018d2319ca95d, type: 3}
+  m_Name: InteractionSettings
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.World.InteractionSettings
+  villagerHitDamage: 10
+  hitInterval: 0.8
+  interactRange: 0.75
+  hitLunge: 0
+  hitImpactPoint: 0.6
+  shakeAmplitude: 0.07
+  shakeDuration: 0.25
+  shakeFrequency: 32
+  dropSearchRadius: 3
+  dropScatter: 0.2
+  carryHeight: 1
+  carrySpeedMultiplier: 0.85
+  dropFallbackRadius: 3
+  selectionOutline: {r: 1, g: 0.55, b: 0.1, a: 1}
+  selectionOverlay: {r: 1, g: 0.55, b: 0.1, a: 0.3}
+  selectionOutlinePixels: 1.5
+  selectedTint: {r: 1, g: 0.72, b: 0.38, a: 1}
+  overlapTint: {r: 1, g: 0.45, b: 0.45, a: 0.75}
+  previewTint: {r: 1, g: 1, b: 1, a: 0.6}
+  dragThreshold: 6
+  healthBarBase: {fileID: 21300000, guid: 3b5af92575b87497ba7bfae8e982b2f2, type: 3}
+  healthBarFill: {fileID: 21300000, guid: 611d68563116f412abd347fb93660868, type: 3}
+  healthBarShowSeconds: 3
+  healthBarFadeSeconds: 1
+  healthBarScale: 0.6
+  healthBarOffset: 0.15
+  healthBarGreenAbove: 0.6
+  healthBarRedBelow: 0.25
+  healthBarGreen: {r: 0.35, g: 0.85, b: 0.3, a: 1}
+  healthBarYellow: {r: 0.95, g: 0.8, b: 0.2, a: 1}
+  healthBarRed: {r: 0.9, g: 0.25, b: 0.2, a: 1}
+  silhouetteShader: {fileID: 4800000, guid: 875aa5d4ee493514a84561ed1cda5014, type: 3}
+  formationSpacing: 1
+  developerHitPower: 10
+  brushSpacing: 1
+  dataVersion: 2

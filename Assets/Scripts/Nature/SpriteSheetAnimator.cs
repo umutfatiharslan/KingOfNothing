@@ -38,6 +38,7 @@ namespace KingOfNothing.World
 
         void Restart()
         {
+            current = -1;
             speed = fps * Random.Range(1f - speedVariation, 1f + speedVariation);
             if (randomStart && frames != null && frames.Length > 0 && speed > 0f)
                 time = Random.Range(0f, frames.Length / speed);

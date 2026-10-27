@@ -18,6 +18,7 @@ MonoBehaviour:
   movementSpeedMultiplier: 1
   generation:
     placementMode: 0
+    referencePlacement: 0
     tags: 16
     fillerWeight: 0.2
     mapCoverage: 0.05
@@ -51,6 +52,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 1
+      countLimit:
+        min: 0
+        max: 60000
+      absentChance: 0
+      amountVariation: 0.2
+      clusterSize:
+        min: 2
+        max: 6
+      clusterRadius: 3
       useClustering: 1
       clusterNoise:
         scale: 42
@@ -92,6 +103,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.35
+      clusterSize:
+        min: 1
+        max: 4
+      clusterRadius: 2
       useClustering: 1
       clusterNoise:
         scale: 14
@@ -133,6 +154,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0.1
+      amountVariation: 0.5
+      clusterSize:
+        min: 2
+        max: 6
+      clusterRadius: 2
       useClustering: 1
       clusterNoise:
         scale: 12
@@ -141,7 +172,7 @@ MonoBehaviour:
         persistence: 0.5
       clusterThreshold: 0.45
       clusterFalloff: 0.2
-      outsideClusterFactor: 0.15
+      outsideClusterFactor: 0.3
       minSpacingX: 0
       minSpacingY: 0
       minDistanceToOtherObjects: 0
@@ -176,6 +207,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.35
+      clusterSize:
+        min: 1
+        max: 3
+      clusterRadius: 2
       useClustering: 1
       clusterNoise:
         scale: 18
@@ -219,6 +260,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.5
+      clusterSize:
+        min: 1
+        max: 3
+      clusterRadius: 2
       useClustering: 0
       clusterNoise:
         scale: 1
@@ -235,45 +286,6 @@ MonoBehaviour:
         min: 2
         max: 9999
       priority: 15
-      positionJitter: 0.3
-    stumpChance: 0
-    companions:
-      enabled: 0
-      count:
-        min: 0
-        max: 3
-      ringRadius: 1
-      variants: []
-  - label: Pumpkins
-    enabled: 1
-    variants:
-    - spawnable: {fileID: 11400000, guid: 9940cb2ce16bc804b8ccb4af66865b6f, type: 2}
-      weight: 1
-    - spawnable: {fileID: 11400000, guid: deafd022bb751954f9dfab7a8a70d04a, type: 2}
-      weight: 1
-    allowedTerrain: 2
-    placement:
-      distribution: 1
-      densityPer1000Cells: 5
-      count:
-        min: 100
-        max: 180
-      useClustering: 0
-      clusterNoise:
-        scale: 26
-        octaves: 3
-        lacunarity: 2
-        persistence: 0.5
-      clusterThreshold: 0.55
-      clusterFalloff: 0.1
-      outsideClusterFactor: 0.05
-      minSpacingX: 0
-      minSpacingY: 0
-      minDistanceToOtherObjects: 0
-      shoreDistance:
-        min: 2
-        max: 9999
-      priority: 12
       positionJitter: 0.3
     stumpChance: 0
     companions:

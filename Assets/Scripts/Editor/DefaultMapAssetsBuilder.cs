@@ -33,10 +33,13 @@ namespace KingOfNothing.EditorTools
         public const string SettingsPath = DataRoot + "/MapGenerationSettings.asset";
         public const string ReferenceMapPath = DataRoot + "/ReferenceMap.asset";
         public const string ReferenceSourcePath = "Assets/Map Source/World Map.map";
-        public const string EditLogPath = DataRoot + "/MapEdits.asset";
+        /// <summary>Developer edit log of an older version (replaced by OriginalMap + the edited map file).</summary>
+        const string ObsoleteEditLogPath = DataRoot + "/MapEdits.asset";
         public const string NamePoolPath = "Assets/Data/Characters/NamePool.asset";
         public const string TraitFolder = "Assets/Data/Characters/Traits";
         public const string VillagerPrefabPath = "Assets/Prefabs/Characters/Villager.prefab";
+        public const string PawnAnimationsPath = "Assets/Data/Characters/PawnAnimations_Blue.asset";
+        const string PawnFolder = TS + "Pawn and Resources/Pawn/Blue Pawn/";
 
         static bool overwrite;
         static readonly Dictionary<string, Sprite[]> frameCache = new Dictionary<string, Sprite[]>();
@@ -59,7 +62,7 @@ namespace KingOfNothing.EditorTools
 
                 EditorUtility.DisplayProgressBar("King of Nothing", "Map settings and reference map...", 0.8f);
                 var settings = BuildSettings(biomes, s);
-                BuildEditLog();
+                BuildMapFiles();
 
                 EditorUtility.DisplayProgressBar("King of Nothing", "Characters...", 0.9f);
                 BuildNamePool();
@@ -209,13 +212,67 @@ namespace KingOfNothing.EditorTools
             public SpawnableDefinition[] Trees = new SpawnableDefinition[5];      // 1..4
             public SpawnableDefinition[] Stumps = new SpawnableDefinition[5];     // 1..4
             public SpawnableDefinition[] Bushes = new SpawnableDefinition[5];     // 1..4
-            public SpawnableDefinition[] Stones = new SpawnableDefinition[5];     // 1..4
+            public SpawnableDefinition[] Stones = new SpawnableDefinition[5];     // 1..4 (Rock1..Rock4)
             public SpawnableDefinition[] GoldStones = new SpawnableDefinition[7]; // 1..6
             public SpawnableDefinition[] WaterRocks = new SpawnableDefinition[5]; // 1..4
             public SpawnableDefinition[] Mushrooms = new SpawnableDefinition[4];  // 1..3
             public SpawnableDefinition[] Pumpkins = new SpawnableDefinition[3];   // 1..2
-            public SpawnableDefinition Bone1, Bone2, Signpost, GoldMine;
+            public SpawnableDefinition Bone1, Bone2, GoldMine;
+            public SpawnableDefinition Signpost1, Signpost2, Scarecrow;           // Deco 16, 17, 18
+            // Old-pack decorations (not spawned by the map yet; placeable with the developer tools)
+            public SpawnableDefinition Rock, RockOld1, RockOld2;                  // Deco 04, 05, 06
+            public SpawnableDefinition[] SmallBushes = new SpawnableDefinition[4]; // 1..3 = Deco 07..09
+            public SpawnableDefinition Grass, GrassBig;                           // Deco 10, 11
+            public SpawnableDefinition GoldMineActive, GoldMineInactive;
+            // Items dropped by broken objects
+            public SpawnableDefinition WoodResource, GoldResource, GoldResourceHighlight, PumpkinItem;
+
+            public IEnumerable<SpawnableDefinition> DeveloperExtras => new[]
+            {
+                Signpost1, Signpost2, Scarecrow, Rock, RockOld1, RockOld2, SmallBushes[1], SmallBushes[2], SmallBushes[3],
+                Grass, GrassBig, GoldMineActive, GoldMineInactive, WoodResource, GoldResource, GoldResourceHighlight, PumpkinItem,
+            }.Where(x => x != null);
         }
+
+        /// <summary>
+        /// Version of the default gameplay values (health / drops / movement tables). Assets with an older version
+        /// get the new values once; afterwards values tuned in the Inspector are kept. Raise it when the tables change.
+        /// </summary>
+        const int GameplayDataVersion = 2;
+
+        static bool NeedsGameplay(SpawnableDefinition asset) =>
+            asset != null && (overwrite || asset.EditorDataVersion < GameplayDataVersion);
+
+        /// <summary>
+        /// Movement rules of an object: solid (blocks characters, hitbox) or walk-through (with a speed multiplier).
+        /// Filled once for existing assets (values tuned in the Inspector are kept), always on overwrite or when the
+        /// gameplay tables are newer than the asset.
+        /// </summary>
+        static void Movement(SpawnableDefinition asset, bool walkThrough, float speed, Vector2 hitbox, float hitboxY = -0.1f, bool fade = true)
+        {
+            if (asset == null || (asset.EditorMovementConfigured && !NeedsGameplay(asset))) return;
+            asset.EditorSetMovement(walkThrough, speed, hitbox, new Vector2(0f, hitboxY), fade);
+            EditorUtility.SetDirty(asset);
+        }
+
+        static void Solid(SpawnableDefinition asset, float width, float height, bool fade = false) =>
+            Movement(asset, false, 1f, new Vector2(width, height), -0.1f, fade);
+
+        static void Passable(SpawnableDefinition asset, float speed = 1f, bool fade = false) =>
+            Movement(asset, true, speed, new Vector2(0.6f, 0.4f), -0.1f, fade);
+
+        /// <summary>Health (-1 = collected directly), drops, pile size, carrying and the look after the first hit.</summary>
+        static void Gameplay(SpawnableDefinition asset, int health, params DropEntry[] drops) =>
+            Gameplay(asset, health, false, 10, null, drops);
+
+        static void Gameplay(SpawnableDefinition asset, int health, bool movable, int stack, Sprite[] damagedFrames, params DropEntry[] drops)
+        {
+            if (!NeedsGameplay(asset)) return;
+            asset.EditorSetGameplay(GameplayDataVersion, health, drops.Where(d => d != null && d.item != null).ToList(), stack, movable, damagedFrames);
+            EditorUtility.SetDirty(asset);
+        }
+
+        static DropEntry Drop(SpawnableDefinition item, int amount, float chance = 1f) => new DropEntry(item, amount, chance);
 
         static SpawnableDefinition Spawnable(string file, string displayName, WorldObjectKind kind, string spritePath,
             Vector2Int footprint, float inset, bool animate, bool blocksBuilding, ResourceType resource, int health, int yield)
@@ -227,29 +284,75 @@ namespace KingOfNothing.EditorTools
             return asset;
         }
 
-        static string Deco(int n) => TSOld + $"Deco/{n:D2}.png";
+        /// <summary>Renames an object asset (keeps its GUID, so every reference stays valid).</summary>
+        static void RenameAsset(string oldFile, string newFile)
+        {
+            string from = $"{SpawnableFolder}/{oldFile}.asset", to = $"{SpawnableFolder}/{newFile}.asset";
+            if (AssetDatabase.LoadAssetAtPath<SpawnableDefinition>(from) == null ||
+                AssetDatabase.LoadAssetAtPath<SpawnableDefinition>(to) != null) return;
+            string error = AssetDatabase.MoveAsset(from, to);
+            if (!string.IsNullOrEmpty(error)) Debug.LogWarning($"[King of Nothing] Could not rename {from}: {error}");
+        }
+
+        static void SetIdentity(SpawnableDefinition asset, string displayName, WorldObjectKind kind)
+        {
+            if (asset == null || (!NeedsGameplay(asset) && asset.DisplayName == displayName && asset.Kind == kind)) return;
+            asset.EditorSetIdentity(displayName, kind);
+            EditorUtility.SetDirty(asset);
+        }
+
+        /// <summary>New names of the old-pack decoration images (agreed with the design; 01.png -> Mushroom_Red_Small.png ...).</summary>
+        static readonly string[] DecoNames =
+        {
+            null, "Mushroom_Red_Small", "Mushroom_Red_Medium", "Mushroom_Red_Big", "Rock", "Rock_old1", "Rock_old2",
+            "Bush_Green_Small", "Bush_Green_Medium", "Bush_Green_Big", "Grass_Green_Small", "Grass_Green_Big",
+            "Pumpkin_Small", "Pumpkin_Big", "Bone1", "Bone2", "Signpost1", "Signpost2", "Scarecrow",
+        };
+
+        const string DecoFolder = TSOld + "Deco";
+
+        /// <summary>Path of old-pack decoration n (01..18) under its new name.</summary>
+        static string Deco(int n) => n > 0 && n < DecoNames.Length ? $"{DecoFolder}/{DecoNames[n]}.png" : $"{DecoFolder}/{n:D2}.png";
+
+        /// <summary>Renames 01.png ... 18.png to their real names (keeps the GUIDs, so every reference stays valid).</summary>
+        static void RenameDecoTextures()
+        {
+            for (int n = 1; n < DecoNames.Length; n++)
+            {
+                string oldPath = $"{DecoFolder}/{n:D2}.png";
+                if (AssetDatabase.LoadAssetAtPath<Texture2D>(oldPath) == null) continue;
+                if (AssetDatabase.LoadAssetAtPath<Texture2D>(Deco(n)) != null) continue;
+                string error = AssetDatabase.RenameAsset(oldPath, DecoNames[n]);
+                if (!string.IsNullOrEmpty(error)) Debug.LogWarning($"[King of Nothing] Could not rename {oldPath}: {error}");
+            }
+        }
+
+        const string GoldStoneFolder = TS + "Pawn and Resources/Gold/Gold Stones/";
 
         static Spawnables BuildSpawnables()
         {
             var s = new Spawnables();
             var one = Vector2Int.one;
 
-            // The post with a skull (Deco 16) used to be spawned as "Skull"; it is a signpost that will be craftable
-            // or rare later. Keep the asset (and its GUID) under its real name.
-            string oldSkullPath = $"{SpawnableFolder}/Skull.asset", signpostPath = $"{SpawnableFolder}/Signpost.asset";
-            if (AssetDatabase.LoadAssetAtPath<SpawnableDefinition>(oldSkullPath) != null &&
-                AssetDatabase.LoadAssetAtPath<SpawnableDefinition>(signpostPath) == null)
-                AssetDatabase.MoveAsset(oldSkullPath, signpostPath);
+            RenameDecoTextures();
 
-            // GDD: every tree has a different health and wood yield. Every object has health (all can be hit).
-            int[] treeHealth = { 0, 20, 30, 25, 40 };
-            int[] treeYield = { 0, 3, 4, 3, 5 };
+            // Asset names agreed with the design (keep the GUIDs): Deco 16 was "Skull" and then "Signpost",
+            // Deco 04-06 were "SmallStone1-3", Deco 10-11 were "GrassTuft1-2".
+            RenameAsset("Skull", "Signpost1");
+            RenameAsset("Signpost", "Signpost1");
+            RenameAsset("SmallStone1", "Rock");
+            RenameAsset("SmallStone2", "Rock_old1");
+            RenameAsset("SmallStone3", "Rock_old2");
+            RenameAsset("GrassTuft1", "Grass");
+            RenameAsset("GrassTuft2", "GrassBig");
+            RenameAsset("LeafyBush", "GrassBig");
+
             for (int n = 1; n <= 4; n++)
             {
                 s.Stumps[n] = Spawnable($"Stump{n}", $"Stump {n}", WorldObjectKind.Stump,
                     TS + $"Pawn and Resources/Wood/Trees/Stump {n}.png", one, 0.3f, false, true, ResourceType.Wood, 10, 1);
                 s.Trees[n] = Spawnable($"Tree{n}", $"Tree {n}", WorldObjectKind.Tree,
-                    TS + $"Pawn and Resources/Wood/Trees/Tree{n}.png", one, 0.55f, true, true, ResourceType.Wood, treeHealth[n], treeYield[n]);
+                    TS + $"Pawn and Resources/Wood/Trees/Tree{n}.png", one, 0.55f, true, true, ResourceType.Wood, 20, 3);
                 // Rules: tree1 -> stump1, tree2 -> stump2 ...
                 if (s.Trees[n].Stump == null)
                 {
@@ -265,10 +368,10 @@ namespace KingOfNothing.EditorTools
                     TS + $"Terrain/Decorations/Rocks in the Water/Water Rocks_0{n}.png", one, 0.3f, true, false, ResourceType.SmallStone, 12, 2);
             }
 
+            // Gold stones spawn with their animated highlight; after the first hit they show the plain version
             for (int n = 1; n <= 6; n++)
                 s.GoldStones[n] = Spawnable($"GoldStone{n}", $"Gold Stone {n}", WorldObjectKind.GoldStone,
-                    TS + $"Pawn and Resources/Gold/Gold Stones/Gold Stone {n}_Highlight.png", one, 0.3f, true, true,
-                    ResourceType.Gold, 30 + n * 10, n);
+                    GoldStoneFolder + $"Gold Stone {n}_Highlight.png", one, 0.3f, true, true, ResourceType.Gold, 30 + n * 10, n);
 
             s.GoldMine = Spawnable("GoldMine", "Gold Mine", WorldObjectKind.GoldMine,
                 TSOld + "Resources/Gold Mine/GoldMine_Destroyed.png", new Vector2Int(3, 2), 0.25f, false, true, ResourceType.Gold, 500, 50);
@@ -278,10 +381,165 @@ namespace KingOfNothing.EditorTools
                     ResourceType.Mushroom, 2, 1);
             s.Pumpkins[1] = Spawnable("Pumpkin1", "Pumpkin 1", WorldObjectKind.Pumpkin, Deco(12), one, 0.3f, false, false, ResourceType.Pumpkin, 3, 1);
             s.Pumpkins[2] = Spawnable("Pumpkin2", "Pumpkin 2", WorldObjectKind.Pumpkin, Deco(13), one, 0.3f, false, false, ResourceType.Pumpkin, 5, 2);
-            s.Bone1 = Spawnable("Bone1", "Bone 1", WorldObjectKind.Bone, Deco(14), one, 0.3f, false, false, ResourceType.None, 2, 0);
-            s.Bone2 = Spawnable("Bone2", "Bone 2", WorldObjectKind.Bone, Deco(15), one, 0.3f, false, false, ResourceType.None, 2, 0);
-            s.Signpost = Spawnable("Signpost", "Signpost", WorldObjectKind.Signpost, Deco(16), one, 0.3f, false, true, ResourceType.Wood, 8, 1);
+            s.Bone1 = Spawnable("Bone1", "Bone 1", WorldObjectKind.Bone, Deco(14), one, 0.3f, false, false, ResourceType.Bone, 2, 0);
+            s.Bone2 = Spawnable("Bone2", "Bone 2", WorldObjectKind.Bone, Deco(15), one, 0.3f, false, false, ResourceType.Bone, 2, 0);
+            s.Signpost1 = Spawnable("Signpost1", "Skull Signpost", WorldObjectKind.Signpost, Deco(16), one, 0.3f, false, true, ResourceType.Wood, 8, 1);
+            s.Signpost2 = Spawnable("Signpost2", "Arrow Signpost", WorldObjectKind.Signpost, Deco(17), one, 0.3f, false, true, ResourceType.Wood, 8, 1);
+            s.Scarecrow = Spawnable("Scarecrow", "Scarecrow", WorldObjectKind.Scarecrow, Deco(18), one, 0.3f, false, true, ResourceType.Wood, 8, 1);
+            SetIdentity(s.Signpost1, "Skull Signpost", WorldObjectKind.Signpost);
+
+            s.Rock = Spawnable("Rock", "Rock", WorldObjectKind.Stone, Deco(4), one, 0.3f, false, false, ResourceType.SmallStone, 2, 1);
+            s.RockOld1 = Spawnable("Rock_old1", "Rock (old) 1", WorldObjectKind.Stone, Deco(5), one, 0.3f, false, true, ResourceType.SmallStone, 3, 1);
+            s.RockOld2 = Spawnable("Rock_old2", "Rock (old) 2", WorldObjectKind.Stone, Deco(6), one, 0.3f, false, true, ResourceType.SmallStone, 4, 1);
+            SetIdentity(s.Rock, "Rock", WorldObjectKind.Stone);
+            SetIdentity(s.RockOld1, "Rock (old) 1", WorldObjectKind.Stone);
+            SetIdentity(s.RockOld2, "Rock (old) 2", WorldObjectKind.Stone);
+            for (int n = 1; n <= 3; n++)
+                s.SmallBushes[n] = Spawnable($"SmallBush{n}", $"Small Bush {n}", WorldObjectKind.Bush, Deco(6 + n), one, 0.3f, false, false,
+                    ResourceType.None, 3 + n, 0);
+            s.Grass = Spawnable("Grass", "Grass", WorldObjectKind.Grass, Deco(10), one, 0.3f, false, false, ResourceType.None, 1, 0);
+            s.GrassBig = Spawnable("GrassBig", "Grass (big)", WorldObjectKind.Grass, Deco(11), one, 0.3f, false, false, ResourceType.None, 1, 0);
+            SetIdentity(s.Grass, "Grass", WorldObjectKind.Grass);
+            SetIdentity(s.GrassBig, "Grass (big)", WorldObjectKind.Grass);
+            s.GoldMineActive = Spawnable("GoldMineActive", "Gold Mine (active)", WorldObjectKind.GoldMine,
+                TSOld + "Resources/Gold Mine/GoldMine_Active.png", new Vector2Int(3, 2), 0.25f, false, true, ResourceType.Gold, 500, 50);
+            s.GoldMineInactive = Spawnable("GoldMineInactive", "Gold Mine (inactive)", WorldObjectKind.GoldMine,
+                TSOld + "Resources/Gold Mine/GoldMine_Inactive.png", new Vector2Int(3, 2), 0.25f, false, true, ResourceType.Gold, 500, 50);
+
+            s.WoodResource = Spawnable("WoodResource", "Wood", WorldObjectKind.Item,
+                TS + "Pawn and Resources/Wood/Wood Resource/Wood Resource.png", one, 0.3f, false, false, ResourceType.Wood, 1, 1);
+            s.GoldResource = Spawnable("GoldResource", "Gold", WorldObjectKind.Item,
+                TS + "Pawn and Resources/Gold/Gold Resource/Gold_Resource.png", one, 0.3f, false, false, ResourceType.Gold, 1, 1);
+            s.GoldResourceHighlight = Spawnable("GoldResourceHighlight", "Gold (shining)", WorldObjectKind.Item,
+                TS + "Pawn and Resources/Gold/Gold Resource/Gold_Resource_Highlight.png", one, 0.3f, true, false, ResourceType.Gold, 1, 1);
+            s.PumpkinItem = Spawnable("PumpkinItem", "Small Pumpkin", WorldObjectKind.Item, Deco(12), one, 0.3f, false, false, ResourceType.Pumpkin, 1, 1);
+
+            ApplyMovementRules(s);
+            ApplyGameplayTables(s);
             return s;
+        }
+
+        /// <summary>
+        /// Who can walk where: bushes (x0.7), grass and bones can be walked through, as well as the smallest
+        /// mushroom (Deco 01), the smallest stone (Rock = Deco 04) and dropped items. Every other object is solid.
+        /// Hitbox = the solid part characters collide with (cells), e.g. only a tree's trunk.
+        /// </summary>
+        static void ApplyMovementRules(Spawnables s)
+        {
+            // fade = 50% transparent while a character is inside / right behind it. Only: trees, bushes, cacti,
+            // gold mines, Gold Stone 5 and 6, signposts.
+            const bool fade = true;
+            for (int n = 1; n <= 4; n++)
+            {
+                Solid(s.Trees[n], 0.45f, 0.4f, fade);
+                Solid(s.Stumps[n], 0.55f, 0.35f);
+                Passable(s.Bushes[n], 0.7f, fade);
+                Solid(s.Stones[n], n == 4 ? 0.85f : n == 2 ? 0.75f : 0.6f, n == 4 ? 0.55f : 0.45f);
+                Solid(s.WaterRocks[n], 0.8f, 0.6f);
+            }
+            for (int n = 1; n <= 6; n++) Solid(s.GoldStones[n], 0.7f, 0.5f, n >= 5);
+            Solid(s.GoldMine, 2.8f, 1.7f, fade);
+            Solid(s.GoldMineActive, 2.8f, 1.7f, fade);
+            Solid(s.GoldMineInactive, 2.8f, 1.7f, fade);
+
+            Passable(s.Mushrooms[1]);
+            Solid(s.Mushrooms[2], 0.4f, 0.3f);
+            Solid(s.Mushrooms[3], 0.55f, 0.4f);
+            Solid(s.Pumpkins[1], 0.5f, 0.4f);
+            Solid(s.Pumpkins[2], 0.6f, 0.45f);
+            Passable(s.Bone1);
+            Passable(s.Bone2);
+            Solid(s.Signpost1, 0.3f, 0.3f, fade);
+            Solid(s.Signpost2, 0.35f, 0.3f, fade);
+            Solid(s.Scarecrow, 0.4f, 0.3f);
+
+            Passable(s.Rock);
+            Solid(s.RockOld1, 0.45f, 0.35f);
+            Solid(s.RockOld2, 0.65f, 0.45f);
+            for (int n = 1; n <= 3; n++) Passable(s.SmallBushes[n], 0.7f, fade);
+            Passable(s.Grass);
+            Passable(s.GrassBig);
+
+            Passable(s.WoodResource);
+            Passable(s.GoldResource);
+            Passable(s.GoldResourceHighlight);
+            Passable(s.PumpkinItem);
+        }
+
+        /// <summary>
+        /// Health and drops from the design table (hp_damages_pieces, second version). Villagers hit for 10 until
+        /// stats exist. Health -1 = collected directly into the inventory. Items lie on the ground in piles of 10.
+        /// </summary>
+        static void ApplyGameplayTables(Spawnables s)
+        {
+            var wood = s.WoodResource;
+            var gold = s.GoldResource;
+            var stone = s.Rock;
+            var mushroom = s.Mushrooms[1];
+            var pumpkin = s.PumpkinItem;
+            const bool movable = true;
+
+            // Items (collected directly, carried in Default mode)
+            Gameplay(wood, -1, movable, 10, null, Drop(wood, 1));
+            Gameplay(gold, -1, movable, 10, null, Drop(gold, 1));
+            Gameplay(s.GoldResourceHighlight, -1, movable, 10, null, Drop(gold, 1));
+            Gameplay(pumpkin, -1, movable, 10, null, Drop(pumpkin, 1));
+
+            // Mushrooms, pumpkins, grass
+            Gameplay(s.Mushrooms[1], -1, false, 10, null, Drop(mushroom, 1));
+            Gameplay(s.Mushrooms[2], 15, Drop(mushroom, 2));
+            Gameplay(s.Mushrooms[3], 40, Drop(mushroom, 4));
+            Gameplay(s.Pumpkins[1], 40, Drop(pumpkin, 1));
+            Gameplay(s.Pumpkins[2], 60, Drop(pumpkin, 3));
+            Gameplay(s.Grass, -1);
+            Gameplay(s.GrassBig, -1);
+
+            // Stones, smallest to biggest (Rock = the stone item itself)
+            Gameplay(s.Rock, -1, movable, 10, null, Drop(stone, 1));
+            Gameplay(s.Stones[1], 60, Drop(stone, 3));
+            Gameplay(s.Stones[3], 80, Drop(stone, 6));
+            Gameplay(s.Stones[2], 110, Drop(stone, 10));
+            Gameplay(s.Stones[4], 140, Drop(stone, 15));
+            Gameplay(s.RockOld1, 60, Drop(stone, 3));
+            Gameplay(s.RockOld2, 80, Drop(stone, 6));
+
+            // Bushes (round: Bush 1 big, Bush 2 small, Bush_Green small / medium / big; leafy: Bush 3 big, Bush 4 small)
+            Gameplay(s.Bushes[1], 25);
+            Gameplay(s.Bushes[2], 10);
+            Gameplay(s.Bushes[3], 20);
+            Gameplay(s.Bushes[4], 8);
+            Gameplay(s.SmallBushes[1], 10);
+            Gameplay(s.SmallBushes[2], 15);
+            Gameplay(s.SmallBushes[3], 25);
+
+            // Others
+            Gameplay(s.Bone1, -1, movable, 10, null, Drop(s.Bone1, 1, 0.5f));
+            Gameplay(s.Bone2, -1, movable, 10, null, Drop(s.Bone2, 1, 0.5f));
+            Gameplay(s.Signpost1, 30, movable, 10, null, Drop(wood, 3), Drop(s.Bone1, 3));
+            Gameplay(s.Signpost2, 30, movable, 10, null, Drop(wood, 3));
+            Gameplay(s.Scarecrow, 40, movable, 10, null, Drop(wood, 3), Drop(pumpkin, 1));
+
+            // Gold stones (plain look after the first hit)
+            int[] goldHealth = { 0, 50, 80, 150, 250, 400, 600 };
+            int[] goldYield = { 0, 2, 4, 7, 11, 15, 20 };
+            for (int n = 1; n <= 6; n++)
+                Gameplay(s.GoldStones[n], goldHealth[n], false, 10, Frames(GoldStoneFolder + $"Gold Stone {n}.png"), Drop(gold, goldYield[n]));
+
+            // Trees (Tree1 pine, Tree2 big pine, Tree3 leafy, Tree4 small leafy) and stumps
+            int[] treeHealth = { 0, 90, 120, 60, 40 };
+            int[] treeWood = { 0, 10, 14, 7, 4 };
+            int[] stumpHealth = { 0, 45, 60, 30, 20 };
+            int[] stumpWood = { 0, 2, 2, 1, 1 };
+            for (int n = 1; n <= 4; n++)
+            {
+                Gameplay(s.Trees[n], treeHealth[n], Drop(wood, treeWood[n]));
+                Gameplay(s.Stumps[n], stumpHealth[n], Drop(wood, stumpWood[n]));
+            }
+
+            // Not in the table yet: keep their health, only mark them as up to date
+            for (int n = 1; n <= 4; n++) Gameplay(s.WaterRocks[n], Mathf.Max(1, s.WaterRocks[n].MaxHealth));
+            foreach (var mine in new[] { s.GoldMine, s.GoldMineActive, s.GoldMineInactive })
+                if (mine != null) Gameplay(mine, Mathf.Max(1, mine.MaxHealth));
         }
 
         // ================================================================== rule presets
@@ -545,6 +803,8 @@ namespace KingOfNothing.EditorTools
                 if (settings.referenceMap == null)
                     settings.referenceMap = BuildReferenceMap(settings.width, settings.height, settings.referenceSettings);
                 if (settings.referenceBiomeMapping.Count == 0) settings.referenceBiomeMapping = DefaultReferenceMapping(biomes);
+                foreach (var extra in s.DeveloperExtras)
+                    if (!settings.extraDeveloperObjects.Contains(extra)) settings.extraDeveloperObjects.Add(extra);
                 EditorUtility.SetDirty(settings);
                 return settings;
             }
@@ -631,16 +891,22 @@ namespace KingOfNothing.EditorTools
             };
 
             settings.globalSpawnRules = new List<GlobalSpawnRule> { mines, pumpkins, skulls, bones, waterRocks };
-            settings.extraDeveloperObjects = new List<SpawnableDefinition> { s.Signpost };
+            settings.extraDeveloperObjects = new List<SpawnableDefinition>(s.DeveloperExtras);
             EditorUtility.SetDirty(settings);
             return settings;
         }
 
-        static MapEditLog BuildEditLog()
+        /// <summary>
+        /// The original map asset (baked on the first Play, never overwritten here: it is the frozen original).
+        /// Removes the edit log of older versions.
+        /// </summary>
+        static void BuildMapFiles()
         {
-            var log = LoadOrCreate<MapEditLog>(EditLogPath, out bool fresh);
-            if (fresh) EditorUtility.SetDirty(log);
-            return log;
+            OriginalMapAsset.LoadOrCreateDefault();
+            MovementSettings.LoadOrCreateDefault();
+            InteractionSettings.LoadOrCreateDefault().EditorEnsureDefaults();
+            if (!string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(ObsoleteEditLogPath, AssetPathToGUIDOptions.OnlyExistingAssets)))
+                AssetDatabase.DeleteAsset(ObsoleteEditLogPath);
         }
 
         // ================================================================== characters
@@ -675,15 +941,56 @@ namespace KingOfNothing.EditorTools
             };
         }
 
+        /// <summary>Every "Pawn_*" sheet of one colour: idle / run, tools (idle, run, interact) and carrying.</summary>
+        static PawnAnimationSet BuildPawnAnimations()
+        {
+            var set = LoadOrCreate<PawnAnimationSet>(PawnAnimationsPath, out bool fresh);
+            if (!fresh && set.idle != null && set.idle.Length > 0 && set.tools.Count > 0) return set;
+            set.idle = Frames(PawnFolder + "Pawn_Idle.png");
+            set.run = Frames(PawnFolder + "Pawn_Run.png");
+            foreach (var tool in new[] { InteractionTool.Axe, InteractionTool.Pickaxe, InteractionTool.Knife, InteractionTool.Hammer })
+                set.EditorSetTool(tool, Frames(PawnFolder + $"Pawn_Idle {tool}.png"), Frames(PawnFolder + $"Pawn_Run {tool}.png"),
+                    Frames(PawnFolder + $"Pawn_Interact {tool}.png"));
+            set.idleWood = Frames(PawnFolder + "Pawn_Idle Wood.png");
+            set.runWood = Frames(PawnFolder + "Pawn_Run Wood.png");
+            set.idleGold = Frames(PawnFolder + "Pawn_Idle Gold.png");
+            set.runGold = Frames(PawnFolder + "Pawn_Run Gold.png");
+            set.idleMeat = Frames(PawnFolder + "Pawn_Idle Meat.png");
+            set.runMeat = Frames(PawnFolder + "Pawn_Run Meat.png");
+            EditorUtility.SetDirty(set);
+            return set;
+        }
+
+        /// <summary>Children the scripts create themselves at runtime; saved copies in the prefab drew everything twice.</summary>
+        static readonly string[] RuntimeChildren = { "Name Tag", "Selection Ring", "Path Line", "Destination Marker" };
+
         static void BuildVillagerPrefab()
         {
-            if (!overwrite && AssetDatabase.LoadAssetAtPath<GameObject>(VillagerPrefabPath) != null) return;
+            var animations = BuildPawnAnimations();
+            if (!overwrite && AssetDatabase.LoadAssetAtPath<GameObject>(VillagerPrefabPath) != null)
+            {
+                // Existing prefab: remove saved runtime children, connect the pawn animations
+                var contents = PrefabUtility.LoadPrefabContents(VillagerPrefabPath);
+                try
+                {
+                    foreach (var childName in RuntimeChildren)
+                        for (int i = contents.transform.childCount - 1; i >= 0; i--)
+                            if (contents.transform.GetChild(i).name == childName)
+                                Object.DestroyImmediate(contents.transform.GetChild(i).gameObject);
+                    var existingUnit = contents.GetComponent<Unit>();
+                    if (existingUnit != null && existingUnit.Animations == null) existingUnit.Animations = animations;
+                    PrefabUtility.SaveAsPrefabAsset(contents, VillagerPrefabPath);
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(contents);
+                }
+                return;
+            }
             TilesetSlicer.EnsureFolder(System.IO.Path.GetDirectoryName(VillagerPrefabPath).Replace('\\', '/'));
 
-            const string pawnFolder = TS + "Pawn and Resources/Pawn/Blue Pawn/";
-            var idle = Frames(pawnFolder + "Pawn_Idle.png");
-            var run = Frames(pawnFolder + "Pawn_Run.png");
-
+            var idle = animations.idle;
+            var run = animations.run;
             var root = new GameObject("Villager");
             try
             {
@@ -700,6 +1007,7 @@ namespace KingOfNothing.EditorTools
 
                 var unit = root.AddComponent<Unit>();
                 unit.SetVisuals(body, idle, run);
+                unit.Animations = animations;
                 root.AddComponent<Villager>();
 
                 PrefabUtility.SaveAsPrefabAsset(root, VillagerPrefabPath);

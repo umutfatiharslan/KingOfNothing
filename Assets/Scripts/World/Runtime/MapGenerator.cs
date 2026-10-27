@@ -1,17 +1,20 @@
 using System;
 using System.Collections.Generic;
 using KingOfNothing.CameraControl;
+using KingOfNothing.Core;
 using KingOfNothing.World.Generation;
+using KingOfNothing.World.Persistence;
 using UnityEngine;
 using UnityEngine.Events;
 
 namespace KingOfNothing.World
 {
     /// <summary>
-    /// Builds the world: runs the generation pipeline with the assigned settings, paints the tilemaps,
-    /// spawns the map objects and fills MapData. By default it runs when the game starts, so the (huge)
-    /// generated content never has to be saved in the scene; the same seed always gives the same map.
-    /// Use the buttons in the Inspector to preview or build the map in the editor.
+    /// Builds the world when the game starts: loads the ORIGINAL map (a frozen file, see OriginalMapAsset;
+    /// baked from the settings the first time), paints the tilemaps, spawns the objects, fills MapData and then
+    /// applies the EDITED map file of this computer on top of it (see MapChangeHistory). While playing, every
+    /// change is recorded into the edited map file; the original is never touched. Reset To Original deletes the
+    /// edited map file. Use the buttons in the Inspector to preview, bake or build the map in the editor.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(MapData))]
@@ -35,18 +38,31 @@ namespace KingOfNothing.World
         [SerializeField] SeedSource seedSource = SeedSource.Settings;
         [SerializeField] int customSeed;
 
+        [Header("Original map")]
+        [Tooltip("The frozen original map. If it is empty it is baked from the settings the first time the map is built in the editor.")]
+        [SerializeField] OriginalMapAsset originalMap;
+        [Tooltip("On = build the frozen original map (+ the edited map file). Off = generate a new map from the settings and " +
+                 "the seed every time (test mode: nothing is saved).")]
+        [SerializeField] bool useOriginalMap = true;
+
+        [Header("Edited map (saved on this computer)")]
+        [Tooltip("Apply the edited map file on top of the original when the map is built.")]
+        [SerializeField] bool loadEditedMap = true;
+        [Tooltip("Record every change made while playing (both game modes) into the edited map file.")]
+        [SerializeField] bool recordChanges = true;
+        [Tooltip("File name in the player's data folder (.../Saves). Empty = '<original map name>_edited'.")]
+        [SerializeField] string editedMapFileName = "";
+        [Tooltip("Seconds after the last change before the file is written (it is always written when the game stops).")]
+        [Min(0f)] [SerializeField] float autosaveDelay = 2f;
+
         [Header("Behaviour")]
-        [Tooltip("Generate the map when Play mode / the game starts.")]
+        [Tooltip("Build the map when Play mode / the game starts.")]
         [SerializeField] bool generateOnAwake = true;
         [Tooltip("Spawn trees, stones, gold... (turn off for quick terrain tests).")]
         [SerializeField] bool spawnObjects = true;
         [Tooltip("Save a map generated in the editor into the scene. Off = the editor result is only a preview and the scene stays small.")]
         [SerializeField] bool keepEditorResultInScene;
         [SerializeField] bool logReport = true;
-
-        [Header("Developer edits")]
-        [Tooltip("Objects placed / deleted / moved with the developer tools; replayed after every generation of this map.")]
-        [SerializeField] MapEditLog editLog;
 
         [Header("Scene references (optional)")]
         [Tooltip("Camera whose bounds and background colour are set to the map. Empty = main camera.")]
@@ -59,16 +75,31 @@ namespace KingOfNothing.World
         public event Action<MapGenerator> MapGenerated;
 
         public MapGenerationSettings Settings => settings;
+        public OriginalMapAsset OriginalMap => originalMap;
         public MapLayout Layout { get; private set; }
+        /// <summary>Statistics of the last generation run (null when the map came from the original file).</summary>
         public MapGenerationReport LastReport { get; private set; }
+        /// <summary>Statistics of the map that is shown (also for maps loaded from the original file).</summary>
+        public string LastReportText { get; private set; }
         public int LastSeed { get; private set; }
         /// <summary>Cell where the exiled party starts (-1 if none was found).</summary>
         public Vector2Int StartCell { get; private set; } = new Vector2Int(-1, -1);
         public bool HasMap => Layout != null;
         public bool KeepEditorResultInScene => keepEditorResultInScene;
         public bool GenerateOnAwake => generateOnAwake;
+        /// <summary>The map data that is shown (the original, or a fresh one in test mode).</summary>
+        public MapSnapshot CurrentSnapshot { get; private set; }
+        /// <summary>True when the shown map is the frozen original (edits are saved).</summary>
+        public bool ShowsOriginalMap { get; private set; }
+        /// <summary>Undo / redo history and edited map file (null when changes are not saved).</summary>
+        public MapChangeHistory History { get; private set; }
+
+        public string EditedMapFileName =>
+            !string.IsNullOrWhiteSpace(editedMapFileName) ? editedMapFileName.Trim()
+            : (originalMap != null ? originalMap.name : "OriginalMap") + "_edited";
 
         MapData mapData;
+        Transform generatedRoot;
         Transform objectsRoot;
         Transform editsRoot;
         Dictionary<string, SpawnableDefinition> spawnablesById;
@@ -87,6 +118,15 @@ namespace KingOfNothing.World
         {
             if (Application.isPlaying && generateOnAwake) Generate();
         }
+
+        void LateUpdate() => History?.Tick();
+
+        void OnApplicationQuit()
+        {
+            if (History != null && History.HasUnsavedChanges) History.Save();
+        }
+
+        void OnDisable() => StopHistory(true);
 
         public int ResolveSeed()
         {
@@ -112,62 +152,194 @@ namespace KingOfNothing.World
             return MapGenerationPipeline.CreateFor(config).Run(config, progress);
         }
 
+        /// <summary>
+        /// Generates a complete map (terrain, biomes, start cell and every object) as data, without creating
+        /// anything in the scene. This is what the original map file stores.
+        /// </summary>
+        public MapSnapshot CreateSnapshot(int seed, Action<string, float> progress = null)
+        {
+            var context = GenerateLayout(seed, progress);
+            if (context == null) return null;
+            var layout = context.Layout;
+            LastReport = context.Report;
+
+            var biomeNames = new string[settings.biomes.Count];
+            for (int i = 0; i < biomeNames.Length; i++) biomeNames[i] = settings.biomes[i] != null ? settings.biomes[i].name : "";
+            var snapshot = MapSnapshot.FromLayout(layout, seed, biomeNames, context.Report.ToString());
+
+            int startIndex = StartLocationFinder.Find(layout, context.Config, settings.startArea, unchecked(seed + 17));
+            if (startIndex >= 0)
+            {
+                snapshot.StartX = layout.X(startIndex);
+                snapshot.StartY = layout.Y(startIndex);
+            }
+
+            progress?.Invoke("Placing objects", 0.9f);
+            var ruleSet = PlacementRuleSet.Build(settings);
+            var reserved = StartLocationFinder.ClearArea(layout, startIndex, settings.startArea.clearRadius);
+            var requests = new ObjectPlacementPlanner().Plan(layout, ruleSet.Rules, unchecked(seed * 31 + 7), reserved);
+
+            var typeIndex = new Dictionary<string, int>();
+            var types = new List<string>();
+            foreach (var request in requests)
+            {
+                if (request.VariantId < 0 || request.VariantId >= ruleSet.Variants.Count) continue;
+                var definition = ruleSet.Variants[request.VariantId];
+                if (definition == null) continue;
+                if (!typeIndex.TryGetValue(definition.name, out int type))
+                {
+                    type = types.Count;
+                    types.Add(definition.name);
+                    typeIndex[definition.name] = type;
+                }
+                snapshot.Objects.Add(new MapObjectRecord
+                {
+                    Type = type,
+                    Group = request.RuleId,
+                    X = request.X,
+                    Y = request.Y,
+                    OffsetX = request.OffsetX,
+                    OffsetY = request.OffsetY,
+                });
+            }
+            snapshot.ObjectTypes = types.ToArray();
+            snapshot.GroupLabels = ruleSet.RuleLabels.ToArray();
+            return snapshot;
+        }
+
         [ContextMenu("Generate")]
         public void Generate() => Generate(ResolveSeed(), null);
 
-        /// <summary>Full generation: layout, tilemaps, objects, MapData, camera.</summary>
+        /// <summary>Builds the map: original (or fresh in test mode), tilemaps, objects, MapData, edited map, camera.</summary>
         public void Generate(int seed, Action<string, float> progress)
         {
             if (!CheckSettings()) return;
             ClearGenerated();
+            palette = null;
+            spawnablesById = null;
 
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            var context = GenerateLayout(seed, progress);
-            if (context == null) return;
-
-            Layout = context.Layout;
-            LastReport = context.Report;
-            LastSeed = seed;
+            var snapshot = useOriginalMap ? LoadOrBakeOriginal(seed, progress) : CreateSnapshot(seed, progress);
+            if (snapshot == null) return;
+            ShowsOriginalMap = useOriginalMap && originalMap != null && originalMap.HasData && originalMap.SnapshotId == snapshot.Id;
 
             bool persist = Application.isPlaying || keepEditorResultInScene;
-            MapData.Initialize(Layout, settings.biomes, !Application.isPlaying && keepEditorResultInScene);
+            int objectCount = BuildWorld(snapshot, progress);
+            string editedMap = StartHistory();
 
-            var root = new GameObject(GeneratedRootName).transform;
-            root.SetParent(transform, false);
-
-            progress?.Invoke("Painting tilemaps", 0.85f);
-            new TilemapPainter().Paint(Layout, settings, root);
-
-            int startIndex = StartLocationFinder.Find(Layout, context.Config, settings.startArea, unchecked(seed + 17));
-            StartCell = startIndex >= 0 ? new Vector2Int(Layout.X(startIndex), Layout.Y(startIndex)) : new Vector2Int(-1, -1);
-
-            int objectCount = 0;
-            if (spawnObjects)
-            {
-                progress?.Invoke("Placing objects", 0.9f);
-                var ruleSet = PlacementRuleSet.Build(settings);
-                var reserved = StartLocationFinder.ClearArea(Layout, startIndex, settings.startArea.clearRadius);
-                var requests = new ObjectPlacementPlanner().Plan(Layout, ruleSet.Rules, unchecked(seed * 31 + 7), reserved);
-                objectsRoot = new GameObject("Nature").transform;
-                objectsRoot.SetParent(root, false);
-                objectCount = new MapObjectSpawner().Spawn(requests, ruleSet, objectsRoot, MapData);
-                ApplyEdits();
-            }
-
-            if (!persist) MarkAsEditorPreview(root.gameObject);
+            if (!persist) MarkAsEditorPreview(generatedRoot.gameObject);
             SetupCamera();
 
             if (logReport)
-                Debug.Log($"[MapGenerator] Map {Layout.Width}x{Layout.Height}, seed {seed}, {objectCount} objects, " +
-                          $"{watch.ElapsedMilliseconds} ms\n{LastReport}", this);
+                Debug.Log($"[MapGenerator] Map {Layout.Width}x{Layout.Height}, seed {LastSeed}, " +
+                          (ShowsOriginalMap ? "original map" : "freshly generated (not saved)") +
+                          $", {objectCount} objects, {editedMap}, {watch.ElapsedMilliseconds} ms\n{LastReportText}", this);
 
             MapGenerated?.Invoke(this);
             onMapGenerated.Invoke();
         }
 
+        MapSnapshot LoadOrBakeOriginal(int seed, Action<string, float> progress)
+        {
+#if UNITY_EDITOR
+            if (originalMap == null)
+            {
+                originalMap = OriginalMapAsset.LoadOrCreateDefault();
+                if (!Application.isPlaying) UnityEditor.EditorUtility.SetDirty(this);
+            }
+#endif
+            if (originalMap == null)
+            {
+                Debug.LogError("[MapGenerator] No Original Map assigned; a new map is generated and nothing is saved.", this);
+                return CreateSnapshot(seed, progress);
+            }
+            var snapshot = originalMap.Load();
+            if (snapshot != null) return snapshot;
+#if UNITY_EDITOR
+            Debug.Log($"[MapGenerator] '{originalMap.name}' is empty: baking the original map from the settings (seed {seed}).", originalMap);
+            snapshot = CreateSnapshot(seed, progress);
+            if (snapshot != null) originalMap.Store(snapshot);
+            return snapshot;
+#else
+            Debug.LogError($"[MapGenerator] '{originalMap.name}' has no map; bake it in the editor. A new map is generated and nothing is saved.", this);
+            return CreateSnapshot(seed, progress);
+#endif
+        }
+
+        /// <summary>Paints and spawns a snapshot. Returns the number of objects.</summary>
+        int BuildWorld(MapSnapshot snapshot, Action<string, float> progress)
+        {
+            var biomeNames = new List<string>();
+            foreach (var b in settings.biomes) biomeNames.Add(b != null ? b.name : "");
+            var missingBiomes = new List<string>();
+            Layout = snapshot.ToLayout(biomeNames, missingBiomes);
+            if (missingBiomes.Count > 0)
+                Debug.LogWarning("[MapGenerator] Biomes of the map are not in the settings any more (shown as the first biome): " +
+                                 string.Join(", ", missingBiomes), this);
+            CurrentSnapshot = snapshot;
+            LastSeed = snapshot.Seed;
+            LastReportText = snapshot.Report;
+            StartCell = new Vector2Int(snapshot.StartX, snapshot.StartY);
+
+            MapData.Initialize(Layout, settings.biomes, !Application.isPlaying && keepEditorResultInScene);
+
+            generatedRoot = new GameObject(GeneratedRootName).transform;
+            generatedRoot.SetParent(transform, false);
+
+            progress?.Invoke("Painting tilemaps", 0.85f);
+            new TilemapPainter().Paint(Layout, settings, generatedRoot);
+
+            if (!spawnObjects) return 0;
+            progress?.Invoke("Placing objects", 0.95f);
+            return SpawnObjects(snapshot);
+        }
+
+        int SpawnObjects(MapSnapshot snapshot)
+        {
+            objectsRoot = new GameObject("Nature").transform;
+            objectsRoot.SetParent(generatedRoot, false);
+            editsRoot = null;
+            var spawner = new MapObjectSpawner();
+            int count = spawner.Spawn(snapshot, FindSpawnable, objectsRoot, MapData);
+            if (spawner.MissingTypes.Count > 0)
+                Debug.LogWarning("[MapGenerator] Objects of the map are not in the settings any more (skipped): " +
+                                 string.Join(", ", spawner.MissingTypes), this);
+            return count;
+        }
+
+        string StartHistory()
+        {
+            StopHistory(false);
+            if (!ShowsOriginalMap) return "changes are not saved (not the original map)";
+            if (!spawnObjects) return "edited map not loaded (objects are off)";
+            if (!loadEditedMap) return "edited map not loaded";
+
+            History = new MapChangeHistory(new MapChangeHistory.Setup
+            {
+                Map = MapData,
+                Original = CurrentSnapshot,
+                File = new EditedMapFile(EditedMapFileName),
+                Resolve = FindSpawnable,
+                Parent = () => EditsRoot,
+                Mode = () => GameModeManager.IsDeveloperMode ? "Developer" : "Default",
+                Record = Application.isPlaying && recordChanges,
+                AutosaveDelay = autosaveDelay,
+            });
+            return History.LoadAndApply();
+        }
+
+        void StopHistory(bool save)
+        {
+            if (History == null) return;
+            if (save && History.HasUnsavedChanges) History.Save();
+            History.Dispose();
+            History = null;
+        }
+
         [ContextMenu("Clear Generated Map")]
         public void ClearGenerated()
         {
+            StopHistory(true);
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
                 var child = transform.GetChild(i);
@@ -177,14 +349,66 @@ namespace KingOfNothing.World
             }
             MapData.Clear();
             Layout = null;
+            generatedRoot = null;
             objectsRoot = null;
             editsRoot = null;
+            CurrentSnapshot = null;
+            ShowsOriginalMap = false;
             StartCell = new Vector2Int(-1, -1);
         }
 
-        // ------------------------------------------------------------------ developer edits
+        // ------------------------------------------------------------------ original / edited map
 
-        public MapEditLog EditLog => editLog;
+        /// <summary>
+        /// Back to the original map: deletes the edited map file and rebuilds every object from the original
+        /// (terrain and characters stay). New changes start a new edited map file.
+        /// </summary>
+        public void ResetToOriginal()
+        {
+            if (CurrentSnapshot == null || generatedRoot == null) return;
+            if (History != null)
+            {
+                History.DeleteFile();
+                StopHistory(false);
+            }
+            else new EditedMapFile(EditedMapFileName).Delete();
+
+            if (objectsRoot != null)
+            {
+                objectsRoot.gameObject.SetActive(false);
+                if (Application.isPlaying) Destroy(objectsRoot.gameObject);
+                else DestroyImmediate(objectsRoot.gameObject);
+            }
+            MapData.ClearObjects();
+            int count = spawnObjects ? SpawnObjects(CurrentSnapshot) : 0;
+            StartHistory();
+            if (!Application.isPlaying && !keepEditorResultInScene) MarkAsEditorPreview(generatedRoot.gameObject);
+            Debug.Log($"[MapGenerator] Map reset to the original ({count} objects); the edited map file was deleted.", this);
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Generates the map from the current settings and stores it as the new original (editor only).
+        /// The old edited map file no longer matches and is archived the next time the map is built.
+        /// </summary>
+        public bool BakeOriginal(int seed, Action<string, float> progress = null)
+        {
+            if (!CheckSettings()) return false;
+            if (originalMap == null)
+            {
+                originalMap = OriginalMapAsset.LoadOrCreateDefault();
+                UnityEditor.EditorUtility.SetDirty(this);
+            }
+            var snapshot = CreateSnapshot(seed, progress);
+            if (snapshot == null) return false;
+            originalMap.Store(snapshot);
+            Debug.Log($"[MapGenerator] New original map baked into '{originalMap.name}': seed {seed}, {snapshot.Objects.Count} objects, " +
+                      $"{originalMap.SizeKilobytes} KB.", originalMap);
+            return true;
+        }
+#endif
+
+        // ------------------------------------------------------------------ developer tools
 
         /// <summary>Every object that can be placed with the developer tools.</summary>
         public IReadOnlyList<SpawnableDefinition> DeveloperPalette
@@ -208,86 +432,18 @@ namespace KingOfNothing.World
             return spawnablesById.TryGetValue(id, out var result) ? result : null;
         }
 
-        /// <summary>Parent for objects created by the developer tools.</summary>
+        /// <summary>Parent for objects created by the developer tools and the edited map.</summary>
         public Transform EditsRoot
         {
             get
             {
                 if (editsRoot == null)
                 {
-                    editsRoot = new GameObject("Developer Edits").transform;
+                    editsRoot = new GameObject("Edited Map Objects").transform;
                     editsRoot.SetParent(objectsRoot != null ? objectsRoot : transform, false);
                 }
                 return editsRoot;
             }
-        }
-
-        /// <summary>Stores a developer edit so it is replayed on the next generation.</summary>
-        public void RecordEdit(MapEdit edit)
-        {
-            if (editLog == null || Layout == null)
-            {
-                Debug.LogWarning("[MapGenerator] No Map Edit Log assigned; the change is not saved.", this);
-                return;
-            }
-            editLog.Record(edit, LastSeed, Layout.Width, Layout.Height);
-        }
-
-        public void ClearEdits()
-        {
-            if (editLog != null) editLog.Clear();
-        }
-
-        void ApplyEdits()
-        {
-            if (editLog == null) return;
-            editLog.LoadRuntimeEdits();
-            if (editLog.Count == 0) return;
-            if (!editLog.Matches(LastSeed, Layout.Width, Layout.Height))
-            {
-                Debug.LogWarning($"[MapGenerator] The map edits belong to seed {editLog.Seed}; they are not applied to seed {LastSeed}.", editLog);
-                return;
-            }
-
-            int applied = 0, failed = 0;
-            foreach (var edit in editLog.Edits)
-            {
-                if (ApplyEdit(edit)) applied++;
-                else failed++;
-            }
-            Debug.Log($"[MapGenerator] Developer edits applied: {applied}" + (failed > 0 ? $", {failed} could not be applied" : ""), this);
-        }
-
-        bool ApplyEdit(MapEdit edit)
-        {
-            var definition = FindSpawnable(edit.objectId);
-            switch (edit.type)
-            {
-                case MapEditType.Remove:
-                {
-                    var target = FindEditTarget(edit.cell, edit.objectId);
-                    if (target == null) return false;
-                    target.Remove();
-                    return true;
-                }
-                case MapEditType.Add:
-                    return definition != null && Objects.WorldObjectFactory.Create(definition, edit.cell, Vector2.zero, EditsRoot, MapData) != null;
-                case MapEditType.Move:
-                {
-                    var target = FindEditTarget(edit.cell, edit.objectId);
-                    if (target == null || definition == null) return false;
-                    target.Remove();
-                    return Objects.WorldObjectFactory.Create(definition, edit.targetCell, Vector2.zero, EditsRoot, MapData) != null;
-                }
-            }
-            return false;
-        }
-
-        Objects.WorldObject FindEditTarget(Vector2Int cell, string id)
-        {
-            var target = MapData.GetObjectAt(cell);
-            if (target == null || target.Definition == null || target.Definition.name != id) return null;
-            return target;
         }
 
         bool CheckSettings()

@@ -18,6 +18,7 @@ MonoBehaviour:
   movementSpeedMultiplier: 1
   generation:
     placementMode: 0
+    referencePlacement: 0
     tags: 16
     fillerWeight: 0.25
     mapCoverage: 0.05
@@ -49,6 +50,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 1
+      countLimit:
+        min: 0
+        max: 60000
+      absentChance: 0
+      amountVariation: 0.2
+      clusterSize:
+        min: 2
+        max: 6
+      clusterRadius: 3
       useClustering: 1
       clusterNoise:
         scale: 42
@@ -88,6 +99,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.35
+      clusterSize:
+        min: 1
+        max: 4
+      clusterRadius: 2
       useClustering: 1
       clusterNoise:
         scale: 14
@@ -131,6 +152,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.35
+      clusterSize:
+        min: 1
+        max: 3
+      clusterRadius: 2
       useClustering: 1
       clusterNoise:
         scale: 18
@@ -174,6 +205,16 @@ MonoBehaviour:
       count:
         min: 5
         max: 10
+      limitCount: 0
+      countLimit:
+        min: 0
+        max: 100000
+      absentChance: 0
+      amountVariation: 0.5
+      clusterSize:
+        min: 1
+        max: 2
+      clusterRadius: 2
       useClustering: 0
       clusterNoise:
         scale: 1
