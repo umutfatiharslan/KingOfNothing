@@ -72,6 +72,25 @@ namespace KingOfNothing.Units
         public float SpeedModifier { get; set; } = 1f;
         /// <summary>Speed multiplier of the current work (carrying something = 0.85...).</summary>
         public float WorkSpeedModifier { get; set; } = 1f;
+        /// <summary>
+        /// Group walk (Pathfinder, walk speed 20): the speed (cells per second, terrain aside) this unit keeps until
+        /// it arrives; below 0 = its own speed.
+        /// </summary>
+        public float SpeedOverride { get; set; } = -1f;
+        /// <summary>Speed on open ground right now (cells per second).</summary>
+        public float CurrentSpeed => SpeedOverride > 0f ? SpeedOverride : moveSpeed * SpeedModifier * WorkSpeedModifier;
+        /// <summary>What the unit is fighting / hunting right now (Hunting Party, hunters' prey...).</summary>
+        public ICombatTarget CurrentTarget { get; set; }
+        /// <summary>Stunned (War Hammer): no walking, no work.</summary>
+        public bool IsStunned
+        {
+            get
+            {
+                if (status == null) status = GetComponent<StatusEffects>();
+                return status != null && status.IsStunned;
+            }
+        }
+        StatusEffects status;
         /// <summary>Sorting order of the body (objects carried by the unit are drawn just above it).</summary>
         public int SortingOrder => body != null ? body.sortingOrder : MapSorting.Order(transform.position.x, transform.position.y);
         /// <summary>Jobs (hit, carry...) of this unit.</summary>
@@ -302,7 +321,8 @@ namespace KingOfNothing.Units
 
         void Update()
         {
-            if (IsMoving && Host == null) Move();
+            if (IsMoving && Host == null && !IsStunned) Move();
+            if (!IsMoving) SpeedOverride = -1f;
             Animate();
             UpdateWading();
             UpdateSorting();
@@ -319,7 +339,7 @@ namespace KingOfNothing.Units
             Vector2 waypoint = path[pathIndex];
             Vector2 toWaypoint = waypoint - position;
             float terrain = useTerrainSpeed && MapData.Instance != null && MapData.Instance.IsReady ? MapData.Instance.SpeedMultiplierAt(position) : 1f;
-            float step = moveSpeed * SpeedModifier * WorkSpeedModifier * terrain * Time.deltaTime;
+            float step = CurrentSpeed * terrain * Time.deltaTime;
 
             if (toWaypoint.magnitude <= step)
             {
@@ -456,9 +476,33 @@ namespace KingOfNothing.Units
 
         bool lungedLastFrame;
 
+        Sprite[] overrideFrames;
+        float overrideStart, overrideUntil;
+
+        /// <summary>Plays frames once over the given time instead of the normal animation (guard / block).</summary>
+        public void PlayFrames(Sprite[] frames, float seconds)
+        {
+            if (frames == null || frames.Length == 0) return;
+            overrideFrames = frames;
+            overrideStart = Time.time;
+            overrideUntil = Time.time + Mathf.Max(0.05f, seconds);
+        }
+
+        /// <summary>The guard / defence animation of the class (Warrior_Guard, Lancer_Right_Defence).</summary>
+        public void PlayGuard(float seconds)
+        {
+            if (animations != null) PlayFrames(animations.guard, seconds);
+        }
+
         void Animate()
         {
             if (body == null) return;
+            if (overrideFrames != null && Time.time < overrideUntil)
+            {
+                float t = (Time.time - overrideStart) / Mathf.Max(0.01f, overrideUntil - overrideStart);
+                body.sprite = overrideFrames[Mathf.Clamp((int)(t * overrideFrames.Length), 0, overrideFrames.Length - 1)];
+                return;
+            }
             // One swing of the interact animation per hit
             if (animations != null && working && swingStart >= 0f)
             {

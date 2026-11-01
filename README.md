@@ -10,7 +10,9 @@ Tiny Swords asset'leriyle yapılan 2D krallık kurma + hafif RTS oyunu (bitirme 
    `Assets/Data/World` altında zemin tile set'leri, haritadaki objeler, 7 biyom, harita ayarları, referans harita
    (`ReferenceMap`), orijinal harita (`OriginalMap`); `Assets/Data/Characters` altında isim havuzu ve trait'ler,
    `Assets/Prefabs/Characters/Villager.prefab` oluşur; ayrıca binalar (`Assets/Data/World/Buildings`), `GameplaySettings`,
-   asker / rahip animasyon setleri ve Gold Coin. Bridge_All.png ve Arrow.png otomatik dilimlenir. (Bu asset'ler küçük; commit'leyin, herkes aynı ayarlarla çalışır.)
+   asker / rahip animasyon setleri, Gold Coin, yiyecekler (çiğ / pişmiş et, özel yemekler, çalı dalı), Scarecrow binası ve
+   karakter ayarları (`Assets/Data/Characters/StatSettings`, `CharacterSettings`). **Kod güncellemesinden sonra bu menüyü
+   tekrar çalıştırın** (eksik asset'ler eklenir, Inspector'da değiştirdiğiniz değerler korunur). Bridge_All.png ve Arrow.png otomatik dilimlenir. (Bu asset'ler küçük; commit'leyin, herkes aynı ayarlarla çalışır.)
    Asset'ler zaten varsa ve varsayılanlara dönmek istiyorsanız: **Reset Default Map Assets (overwrite)**.
 4. Üst menü: **King of Nothing → Setup → Create World Scene** → `Assets/Scenes/World.unity` oluşur ve açılır.
 5. **Play**'e bas. İlk Play'de orijinal harita ayarlardan bir kez üretilip `Assets/Data/World/OriginalMap` dosyasına
@@ -87,7 +89,8 @@ Tiny Swords asset'leriyle yapılan 2D krallık kurma + hafif RTS oyunu (bitirme 
   karakterler arası aralık).
 - Karakter son yaptığı eylemin animasyonlarını (ör. elinde balta) bir sonraki emre kadar kullanır; sadece yürüme emri
   verilince düz Pawn_Run / Pawn_Idle'a döner.
-- Köylüler şimdilik her vuruşta **10 hasar** verir; pawn'ın iş animasyonu oynar (ağaç / kütük: balta, taş / altın: kazma,
+- Köylüler her vuruşta o işin **stat seviyesi** kadar hasar verir (Ağaç kesme, Madencilik, Tarım, Avcılık, İnşa; açken
+  +%10); pawn'ın iş animasyonu oynar (ağaç / kütük: balta, taş / altın: kazma,
   mantar / çalı / ot: bıçak, diğerleri: çekiç — her objenin asset'inde `Interaction Tool` ile değiştirilebilir), vuruş anında
   obje sallanır. Odun / altın / et taşırken pawn'ın taşıma animasyonu kullanılır.
 - **Can barı**: vurulan objenin üstünde belirir, son vuruştan 3 sn sonra 1 sn'de kaybolur; %60 üstü yeşil, %25–60 sarı,
@@ -109,8 +112,8 @@ iptal. Şablona sağ tık → menünün ilk satırı **Give up template** (yapma
 Başlamış bir şantiye anında silinemez: sağ tık → **Destroy (tear down)** ile karakterler (köylüler çekiçle, askerler
 silahlarıyla) canı bitene kadar yıkar; yıkılınca yapım malzemesinin **%50'si** yere loot olarak düşer
 (`GameplaySettings → Construction Salvage Share`).
-İnşa / tamir eden köylü binanın yanında çekiçle çalışır ve bina her vuruşta sallanır; her vuruş
-`GameplaySettings → Build Power Per Hit` (50) can ekler. Yanında gün sayacı durur.
+İnşa / tamir eden köylü binanın yanında çekiçle çalışır ve bina her vuruşta sallanır; her vuruş köylünün **İnşa**
+seviyesi kadar can ekler (hız, kritik ve kilometre taşları statlara göre; aşağıda). Yanında gün sayacı durur.
 
 **Malzeme**: Default modda şablon, yapım malzemesi (`Build Cost`) **tamamen getirilene kadar** inşa edilemez; malzeme
 depodan kendiliğinden düşülmez, **köylüler taşır**. Şablona sağ tık → menüde getirilen malzeme görünür (ör.
@@ -122,19 +125,24 @@ depolardaki odun, taş, altın, gold coin ve diğer eşyaları gösterir.
 
 | Bina | Asset | Tam can | Yıkık hal canı | Maliyet (Default mod) | Kapasite | Envanter |
 |---|---|---|---|---|---|---|
-| Castle (ana kale, **tek**) | Castle.png | 10000 | 4000 (Castle_Destroyed) | 200 odun, 150 taş, 30 altın | sınırsız | 9 çeşit x 100 |
-| School (okul) | Barracks.png | 5000 | 2000 (Castle_Destroyed x0.6) | 80 odun, 40 taş | 4 (sadece köylü) | - |
-| Army House (orduevi) | Archery.png | 5000 | 2000 (Castle_Destroyed x0.6) | 80 odun, 40 taş | 2 (köylü, asker) | - |
-| Church (kilise) | Monastery.png | 7000 | 2000 (Castle_Destroyed x0.6) | 100 odun, 60 taş, 10 altın | 4 | - |
-| House 1/2/3 (kapı güney / güneybatı / yan) | House1-3.png | 3000 | 1000 (House_Destroyed) | 30 odun, 10 taş | 2 (her meslek) | 4 çeşit x 100 |
-| Archer Tower | Tower.png | 6000 | 3000 (Tower_Destroyed) | 60 odun, 50 taş | 1 (üstünde) | - |
-| Bridge (yatay / dikey) | Bridge_All.png | 2000 | 1500 (3 aşama, 500'er) | 20 odun | - | - |
-| Furnace (fırın, geçici görsel) | Avatars_16.png | 1000 | 300 (House_Destroyed x0.75) | 20 odun, 30 taş | - | 3 çeşit x 30 |
-| Gold Mine (altın madeni) | GoldMine_Inactive / Active | 2000 | 1000 (GoldMine_Destroyed) | 40 odun, 20 taş | 2 (sadece köylü) | - |
+| Castle (ana kale, **tek**) | Castle.png | 2000 | 800 (Castle_Destroyed) | 200 odun, 150 taş, 30 altın | sınırsız | 9 çeşit x 100 |
+| School (okul) | Barracks.png | 1000 | 400 (Castle_Destroyed x0.6) | 80 odun, 40 taş | 4 (sadece köylü) | 6 çeşit x 100 (**kendi deposu**) |
+| Army House (orduevi) | Archery.png | 1000 | 400 (Castle_Destroyed x0.6) | 80 odun, 40 taş | 2 (köylü, asker) | 6 çeşit x 100 (**kendi deposu**) |
+| Church (kilise) | Monastery.png | 1400 | 400 (Castle_Destroyed x0.6) | 100 odun, 60 taş, 10 altın | 4 | 6 çeşit x 100 (**kendi deposu**) |
+| House 1/2/3 (kapı güney / güneybatı / yan) | House1-3.png | 600 | 200 (House_Destroyed) | 30 odun, 10 taş | 2 (her meslek) | 4 çeşit x 100 |
+| Archer Tower | Tower.png | 1200 | 600 (Tower_Destroyed) | 60 odun, 50 taş | 1 (üstünde) | - |
+| Bridge (yatay / dikey) | Bridge_All.png | 400 | 300 (3 aşama, 100'er) | 20 odun | - | - |
+| Furnace (fırın, geçici görsel) | Avatars_16.png | 200 | 60 (House_Destroyed x0.75) | 20 odun, 30 taş | - | 6 çeşit x 30 |
+| Gold Mine (altın madeni) | GoldMine_Inactive / Active | 400 | 200 (GoldMine_Destroyed) | 40 odun, 20 taş | 2 (sadece köylü) | - |
+| Scarecrow (korkuluk) | Scarecrow.png (Deco 18) | 100 | - (yıkılınca kaybolur) | 4 odun, 2 taş, 1 balkabağı | - | - |
 
-İnşaat görselleri tam canın içindeki eşiklerdir: Castle_Construction < 4000; House_Construction x1.5 < 2000 (okul,
-orduevi, kilise); House_Construction < 1000 (evler); Tower_Construction < 3000; köprü < 500 / 1000 / 1500;
-GoldMine_Destroyed < 1000 (maden). Can eşiği geçince bitmiş görsel görünür ama inşaat tam cana kadar sürer.
+Bina canları stat tablosuyla **5'e bölündü** (bir vuruş = vuranın stat seviyesi kadar). **Create Default Map Assets**
+mevcut bina asset'lerini bir kez böler (patch 4); haritada kayıtlı binaların canı yeni tam canla sınırlanır.
+İnşaat görselleri tam canın içindeki eşiklerdir: Castle_Construction < 800; House_Construction x1.5 < 400 (okul,
+orduevi, kilise); House_Construction < 200 (evler); Tower_Construction < 600; köprü < 100 / 200 / 300;
+GoldMine_Destroyed < 200 (maden). Can eşiği geçince bitmiş görsel görünür ama inşaat tam cana kadar sürer.
+**Kendi deposu** olan binaların (okul, orduevi, kilise) eşyaları hazineye / kaynak çubuğuna sayılmaz: oradaki
+eğitimlerin bedeli bu depodan ödenir.
 
 - **Üç ayrı can**: inşaat (şablon → tam can), **tam hal** ve **yıkık hal**. Tam halin canı bitince bina yıkık görsele geçer
   ve yıkık halin kendi canı **yeniden yeşilden** başlar (can barı yeşil → sarı → kırmızı). Yıkık halin canı da bitince bina
@@ -164,18 +172,20 @@ GoldMine_Destroyed < 1000 (maden). Can eşiği geçince bitmiş görsel görün�
   girer, kapasiteye ve kimin girebileceğine bakılır), **Character list**, **Inventory**, **Stock loot**, kulede **Climb
   tower** / **Come down from tower**, fırında **Collect Gold Coin**, madende **Mine** / **Destroy**, askerler seçiliyse
   **Attack**. Hiç karakter seçili değilken de binaya sağ tıklanabilir (liste, envanter).
-- **Character list**: pencere daha uzun; her karakterin kendi düğmeleri var. Evler ve kale: **Exit**. Okul / orduevi:
-  **Exit**, **Improve stat** (stat sistemi gelene kadar gri). Orduevi: **sınıf değiştirme** (Warrior / Lancer / Archer,
-  geri dönmek için Villager; rahip hariç). Kilise: **Exit**, **Heal** (20 gold coin, depolardan — kale önce), **Pay
-  indulgence** (10, gri — ruh sağlığı yok), rahip için **Skill development** (gri), **Random skill +1** (1000, gri),
-  **Become priest** (rahip sadece kilisede açılır). Kule: **Come down**, **Face left / right**.
+- **Character list**: pencere daha uzun; her karakterin kendi düğmeleri var (**Bio** her yerde). Evler ve kale: **Exit**.
+  Okul / orduevi / kilise: **Exit**, **Training...** (eğitim penceresi, aşağıda). Orduevi: **sınıf değiştirme** (Warrior /
+  Lancer / Archer, geri dönmek için Villager; rahip hariç; o sınıfın silah statı 0 olan değiştiremez). Kilise: **Heal**
+  (**40 gold coin → 20 can**, karakter başına **günde bir kez**; coin hazineden — kale önce), **Pay indulgence** (10, gri
+  — ruh sağlığı yok), **Random skill +1** (1000), **Become priest** (rahip sadece kilisede açılır). Kule: **Come down**,
+  **Face left / right**.
 - **Okçu kulesi**: karakter seçiliyken kuleye sağ tık → **Climb tower** (kapasite 1). Karakter kulenin tepesinde durur,
   sağa / sola bakabilir; inmek için kuleye veya karaktere sağ tık → **Come down from tower** (veya başka yere yürüt).
-  Üstünde okçu varken kule +500 can alır, okçunun menzili x2 olur, kulede kaldığı her dakika okçuluk +1 (en fazla +5,
+  Üstünde okçu varken kule +100 can alır, okçunun menzili x2 olur, kulede kaldığı her dakika okçuluk +1 (en fazla +5,
   inince kaybolur, tekrar çıkınca sıfırdan). **Fear of Heights** trait'li okçu kulede işe yaramaz (trait kuleye çıkınca
   ortaya çıkar). Tümü kulenin asset'inde (`Tower` başlığı).
 - **Altın madeni**: haritadaki madenler **yıkık** (GoldMine_Destroyed) başlar; köylülerle **Repair** edilince çalışır.
-  **Mine**: köylüler (en fazla 2) madene girer, her biri 5 sn'de 1 Gold_Resource çıkarır; altınlar kapının önünde 10'luk
+  **Mine**: köylüler (en fazla 2; Mine Chief ile 3) madene girer, her biri **125 − 5 × Madencilik** sn'de 1
+  Gold_Resource çıkarır (seviye 1: 120 sn, seviye 20: 25 sn; Madencilik 0 olan giremez); altınlar kapının önünde 10'luk
   yığınlar olur. Maden 500 altından sonra tükenir. İçeride biri çalışırken GoldMine_Active görünür. **Attack**: köylüler
   (kazmayla) ve askerler madene saldırıp kırabilir. Maden Build menüsünden de inşa edilebilir. Askerler madene giremez. Değerler madenin asset'inde
   (`Gold mine` başlığı; `Spawnables/GoldMine*` asset'leri artık bina asset'i, GUID'leri aynı kaldı).
@@ -187,10 +197,11 @@ GoldMine_Destroyed < 1000 (maden). Can eşiği geçince bitmiş görsel görün�
   Yerdeki küçük loot'ların (odun, en küçük altın, gold coin, en küçük taş, en küçük mantar) içinden / üstünden geçilir;
   item yığınları asset ne derse desin yolu kapatmaz.
 - **Gold coin**: haritada küçültüldü (`Visual Scale` 0.35, köylünün eline sığar) ve odun gibi 10'luk yığınlar halinde taşınır.
-- **Fırın**: girdiler Gold_Resource + Wood Resource (envanterine Stock loot ile), **1 altın + 3 odun → 1 gold coin**
-  (Icon_03), 8 sn. Çalışırken üstünden 3 hücre yükseğe Dust_01 dumanı çıkar (dumanla etkileşim yok). Coin'ler
-  **Collect Gold Coin** ile alınır, kaleye / eve stoklanabilir. Görsel geçici: asset gelince `Furnace` asset'inin sprite'ı
-  değiştirilecek.
+- **Fırın**: **başında bir fırıncı çalışmadan çalışmaz** (fırına sağ tık → **Work the furnace**, ya da iş önceliğinde
+  Fırıncılık olan köylüler kendiliğinden). Tarifler (`Furnace` asset'i → `Furnace Recipes`): **1 altın + 3 odun → 1 gold
+  coin** (8 sn) ve **1 çiğ et + 1 odun → 1 pişmiş et** (6 sn, yemek). Süre Fırıncılık seviyesiyle kısalır; fırıncı
+  girdileri kendisi getirir, ürünü dışarı taşır. Çalışırken üstünden 3 hücre yükseğe Dust_01 dumanı çıkar. Ürünler
+  **Collect** ile de alınır. Görsel geçici: asset gelince `Furnace` asset'inin sprite'ı değiştirilecek.
 - **Askerler**: Warrior (kılıç, iki saldırı animasyonu sırayla), Lancer (mızrak, yöne göre saldırı sheet'i), Archer (ok,
   menzil **10 hücre**), Monk (rahip). Pawn'larla aynı mantık: idle / run, saldırırken silah animasyonu.
   **Köylü işlerini sadece köylüler yapar**: askerler ağaç kesemez, bina inşa / tamir edemez, taş / altın kıramaz, madene
@@ -206,7 +217,90 @@ GoldMine_Destroyed < 1000 (maden). Can eşiği geçince bitmiş görsel görün�
   fırın / köprü / maden kuralları), sınıf animasyonları `Assets/Data/Characters/*Animations_Blue`. Hepsi Play modunda da kalıcı.
 - Binalar, evreleri (şablon / inşaat / tam / yıkık) ve canları düzenlenmiş haritaya kaydedilir ve Undo / Redo ile geri
   alınır. **Depolardaki eşyalar da kaydedilir ama Undo / Redo onları geri almaz** (envanter sistemi gelince bağlanacak).
-  İçerideki karakterler kaydedilmez (karakterler her oyunda yeniden doğar).
+  Karakterler ayrı bir dosyaya kaydedilir (aşağıda "Karakterler" bölümü).
+
+## Karakterler: statlar, rutin, eğitim
+
+Oyunda kral / prens yok: oyun **2 köylü + 1 savaşçı** sürgünle başlar (rastgele isimler; eski sahnelerdeki prens satırı
+da normal köylü olur). Tüm sayılar `Assets/Data/Characters/StatSettings` (XP, stat etkileri, kilometre taşları,
+eğitimler) ve `CharacterSettings` (avatarlar, başlangıç zarı, ihtiyaçlar, varsayılan plan, rutin, popup, işaretler,
+et, koyunlar) içinde; Inspector'dan değişir.
+
+**Statlar (16)** — İş: İnşa, Ağaç kesme, Madencilik, Tarım (toplayıcılık), Avcılık, Balıkçılık (henüz yok), Fırıncılık,
+Verimlilik. Savaş: Okçuluk, Kılıç, Mızrak, Savunma, Can. Destek: Şifa. Yaşam: Yürüme hızı, Açlık.
+- **Başlangıç zarı**: her iş / savaş statı ayrı ayrı: %10 → 0 (o işi hiç yapamaz, eğitilemez), yoksa 1, 2 veya 3 (eşit
+  şans); bir karakterde en fazla 3 stat 0. Yaşam statları 1–3 (asla 0). Şifa herkeste 0; **rahipler** Şifa 1 ile başlar,
+  iş statları ve Okçuluk / Kılıç / Mızrak 0'a düşer (Savunma ve Can kalır). Askerin kendi silah statı en az 1'dir.
+- **XP**: stat, kendi işini yaptıkça XP kazanır; seviye L → L+1 için **200 + 100 × (L−1)** XP (1→2: 200 … 19→20: 2000).
+  Kaynaklar: inşa vuruşu 2 (+20 bina bitince), balta 2 (+10 ağaç devrilince), kazma 2 (madende altın başına 5), tarım
+  vuruşu 2 (+5 hasat), av vuruşu 3 (+10 av), fırın turu 10, taşınan eşya başına 1 (Verimlilik), ok 2 (+2 isabet), kılıç /
+  mızrak vuruşu 2, Savunma: alınan 5 hasar başına 1 (korkuluğa 4 vuruşta 1), Can: kaybedilen / kazanılan 5 can başına 1,
+  Şifa: iyileştirilen can başına 1, Yürüme: 10 hücrede 1, Açlık: yemek başına 5.
+- **Popup**: her XP'de kafanın üstünde yazı + yukarı ok (Icon_07), 3 sn durur, 2 sn'de kaybolur. Seviye atlama ve
+  kilometre taşları da popup + günlüğe yazılır.
+- **Seviye etkileri** (`StatEffects`): vuruş hasarı = stat seviyesi (bina yapımı dahil), inşa hızı / kritik, binanın
+  günlük çürümesi, madende altın süresi (125 − 5L sn), ekstra kaynak şansları, avın kaçma mesafesi, fırın hızı / odun
+  tasarrufu, malzeme tasarrufu, taşıma kapasitesi, okçu isabeti / hızı / menzili, yakın dövüş hızı, dost ateşi, mızrak
+  bloğu, savunma hasar azaltma, azami can, şifa alanı, yürüme hızı, açlık hızı.
+- **Kilometre taşları** (5 / 10 / 15 / 20): her stat için 4 özel yetenek (`Milestones`; Bio → Stats'ta kareler, üzerine
+  gelince açıklama). Tarım, Balıkçılık ve Mucize (Şifa 20) şimdilik kapalı. Örnekler: Okçuluk 5 dost ateşini kapatır,
+  Savunma 5 günün ilk darbesi −%25 (15: −%50 + geri itme), Can 5 Second Wind (oyunda bir kez), Can 10 her sabah %5
+  iyileşme, Can 20 Immortal Will (5 günde bir), Şifa 10 alan şifası + kütüklerin %100 yeniden büyümesi, Yürüme 20
+  Pathfinder (diğerleri onu takip eder), Açlık 5 binalarda daha az acıkma, 10 Iron Stomach (çiğ eti %25 yer), 20 Fine Dine
+  (tokken yenen her yemek +5 azami can, en fazla 200), Fırıncılık 20 Master's Meal (günde en fazla 3; yiyen rastgele bir
+  statta seviye bonusu alır ve o statı bir gün 2 kat hızlı öğrenir). Kanama: oyun saatinde 10 can, 5 saat (toplam 50).
+- **Ruh hali** bir stat değil, durumdur (eğlence ve uyku artırır, iş azaltır).
+
+**Pencereler** (alt çubuk: **Characters**, **Schedule**, **Work**, **Build**):
+- **Characters**: avatarlı liste (Avatars_01 savaşçı, 02 mızraklı, 03 okçu, 04 rahip, 05 köylü), ne yaptığı ve can
+  barı. Tık = seç ve kamerayı ona getir, **çift tık** = **Bio**. Karaktere sağ tık → **Bio**, **Resume routine**.
+- **Bio**: başlık + sekmeler: **Stats** (ihtiyaç barları, stat seviyeleri, XP barları, eğitim çarpanı, kilometre taşları;
+  developer modda +/- ve XP düğmeleri) ve **Journal** (seviyeler, kilometre taşları, eğitimler, yaralanmalar ...).
+  Yeni sekme eklemek için `IBioTab` arayüzünü uygulayan bir sınıf yazmak yeter (otomatik bulunur).
+- **Schedule**: RimWorld gibi her karakter için 24 kare: **Work / Recreation / Sleep** fırçasıyla boyanır; kopyala /
+  yapıştır (Copy / Paste), **Everybody: default plan** (06–18 iş, 18–22 eğlence, 22–06 uyku).
+- **Work**: RimWorld gibi iş türü başına öncelik 1–5 (sol tık bir sonraki değer, sağ tık bir önceki; boş = yapmaz). Stat 0 olan veya
+  mesleğine uymayan iş kapalıdır (şifa sadece rahip).
+
+**Rutin** (`CharacterBrain`): karakterler plana ve önceliklere göre kendi başına yaşar.
+- **İş saatleri**: köylüler öncelik sırasıyla: inşa / tamir (yerleşimdeki %85 altı binalar), **işaretli** ağaç / taş /
+  bitki (ağaç, taş ve bitkiler **sadece işaretlenince** kesilir: objeye sağ tık → **Mark for chopping / mining /
+  harvesting**; işaret ikonları Tool_02 / 04 / 03), altın madeni, işaretli koyun avı, fırın, taşıma (şablonlara malzeme,
+  eğitim deposu talepleri, yerdeki loot'u depoya). Rahipler yaralıları iyileştirir. **Askerler** (savaşçı, mızraklı, okçu)
+  boş bir **korkulukta** (Scarecrow, Build menüsünde) antrenman yapar, boş korkuluk yoksa devriye gezer.
+- **Eğlence**: kale / kilise çevresinde dolaşma ve sohbet; askerler kalenin çevresinde **devriye** (düşman algılama
+  kancası hazır, düşman henüz yok).
+- **Uyku**: evinde (köylüler evde, askerler orduevinde, rahipler kilisede, yer yoksa kalede), hiçbiri yoksa yerde.
+  Uyurken can yenilenir.
+- **Açlık**: tokluk 50'nin altına düşünce önce depolardan, sonra yerdeki yığınlardan yer. Balkabağı +40, mantar +15,
+  pişmiş et +50 (çiğ et sadece Iron Stomach ile). Tokluk 0'da can kaybı (en az 1 kalır).
+- **Emirler**: iş emri bitince rutin geri gelir; düz yürüme emri karakteri **Resume routine** veya uyku saatine kadar
+  orada tutar. Emirle binaya giren karakter orada kalır.
+- **Koyunlar**: haritada sürüler halinde dolaşır, otlar, avcı yaklaşınca kaçar; kuzular doğar. Koyuna sağ tık → **Hunt**,
+  **Mark for hunting**, **Herd to...** (Avcılık 5 Shepherd: sürüyü tıklanan yere götürür). Ölen koyun **çiğ et** düşürür; et fırında pişer.
+- **Hastane**: canı %25'in altına düşen (ör. orduevi eğitiminde) kiliseye gider: **40 coin → 20 can**, günde bir kez.
+  Coin yoksa, bugün iyileştiyse veya hâlâ %25 altındaysa rutine döner.
+
+**Eğitim** (okul = iş statları, orduevi = savaş statları, kilise = rahipler için Şifa; yürüme hızı ve açlık eğitilmez):
+binaya sağ tık → karakter listesi → **Training...** → stat seç → **Start** (yarım kalanda **Resume**), **Stop (progress is
+kept)**, **Close**. Karakter binanın içinde olmalı; developer modda **Finish (Dev)**.
+- Bedel binanın **kendi deposundan** ödenir: **2 + 2L coin** ve malzeme başına **5 + 5L** (İnşa: odun + taş, Ağaç kesme:
+  odun, Madencilik: taş, Tarım: çalı dalı + mantar, Avcılık: çiğ et, Fırıncılık: altın, Verimlilik: taş + odun, Okçuluk /
+  Mızrak: odun, Kılıç: altın, Savunma: taş, Can: balkabağı, Şifa: mantar). Eksik malzeme için **Request materials**:
+  taşıyıcılar depoya getirir. Developer modda bedava.
+- Süre: seviye 1→2 için 2 oyun saatinden 19→20 için **168 saate** (bir hafta) kadar (`Training Hours`). İş ve eğlence
+  saatlerinde içeride çalışır, uyku saatinde çıkar; acıkınca çıkıp yer ve geri döner. Yarıda kalan eğitim ilerlemesini ve
+  ödenen bedeli korur; tekrar girip pencereden başlatınca kaldığı yerden devam eder.
+- Sonuç: **eğitim XP vermez, seviye atlatmaz**; o seviyenin XP'sini **1 + 0.1 × L** ile çarpar (seviye 1'de x1.1,
+  2'de x1.2 …) — bir sonraki seviyeye kadar.
+- **Orduevi**: eğitimin her oyun saatinde %20 şansla **hedef seviye kadar** can kaybı (1→2: 2, 2→3: 3; ölmez). %25 can
+  altında başlanamaz; eğitimde %25'in altına düşen çıkıp kiliseye gider.
+
+**Kayıt**: karakterler (statlar, XP, plan, öncelikler, günlük, eğitimler, ihtiyaçlar), koyunlar, işaretler ve saat
+düzenlenmiş harita dosyasının yanına (`<persistentDataPath>/Saves/OriginalMap_edited_characters.json`) 30 sn'de bir ve
+çıkışta kaydedilir (harita
+orijinal harita dosyasından yüklendiğinde; ayarlardan yeni üretilen, kaydedilmeyen haritada karakterler de kaydedilmez).
+Developer Tools → Characters → **Reset characters** yeni oyun gibi başlatır.
 
 ## Haritayı ayarlamak
 
@@ -252,8 +346,9 @@ Ayar değişiklikleri orijinal haritayı değiştirmez: yeni ayarları haritada 
     objenin yarı saydam kopyası fareyi izler; tık veya **basılı tutup sürükle** = fırça ile boya, iç içe konabilir). Loot'lar
     (odun, altın, coin...) iç içe binmez, **yığınlanır**: aynı hücredeki aynı yığına eklenir (yığın boyutuna kadar), yığın
     doluysa yanındaki boş hücreye konur. Bir fırça darbesi tek geri alma adımıdır.
-  - **Characters**: meslek seç (Villager, Warrior, Lancer, Archer, Priest, King), haritaya tıkla = o meslekte yeni karakter
-    (prefab `StartingPartySpawner`'dan; karakterler kaydedilmez).
+  - **Characters**: meslek seç (Villager, Warrior, Lancer, Archer, Priest), haritaya tıkla = o meslekte yeni karakter
+    (prefab `StartingPartySpawner`'dan, statları zarla). **Reset characters** (onaylı): kayıtlı karakterleri siler, yeni
+    oyun gibi 3 sürgün + koyun sürüleri doğar.
   - **Move**: objeye tık (üst üste olanlarda en üstteki / en son eklenen) veya **sürükleyerek kutu içine al**, sonra yeni
     yerine tıkla (grup düzeni korunur).
   - Kısayollar: **Ctrl + sol tık** vur, **Ctrl + sağ tık** yok et, **sağ tık / Esc** aracı bırak.
@@ -280,11 +375,19 @@ Bush_Green_Small/Medium/Big, Grass_Green_Small/Big, Pumpkin_Small/Big, Bone1/2, 
   genel kurallar `World/Data/GameplaySettings`.
 - `World/Objects`: `WorldObject → ResourceNode → TreeResource / StumpObject / GoldMineResource / Building`, `DecorationObject`. Kesilen ağaç kütük bırakır; kütük kaldırılmadan oraya bina konamaz (`MapData.CanPlaceStructure`).
 - `Map`: `MapData` (hücre → arazi / biyom / obje, yürünebilirlik, hız, kar kuralı), `MapSorting` (çizim sırası).
-- `Characters`: `Villager` (kimlik, rol, statlar 0-20, ihtiyaçlar, trait'ler), `TraitDefinition` (trait şablonu), `StartingPartySpawner` (sürgün edilen 3 kişi).
+- `Characters`: `Villager` (kimlik, rol, statlar, ihtiyaçlar, trait'ler, günlük, plan, öncelikler, eğitim), `StatBlock`
+  (seviye + XP), `StatSettings` / `CharacterSettings` (tüm sayılar), `StatEffects` (stat → oyun etkisi), `Milestones`,
+  `CombatRules` (vuruş, savunma, durum etkileri), `WorkRewards`, `CharacterBrain` (rutin yapay zekâ), `WorkGivers`
+  (iş bulma, yerleşim, ev), `TrainingService`, `Designations` (işaretleme), `CharacterSave`, `FloatingText`,
+  `TraitDefinition`, `StartingPartySpawner` (sürgün edilen 3 kişi + `StatRoller`).
+- `Animals`: `Sheep` (koyun: otlar, kaçar, avlanır, et düşürür), `SheepHerds` (sürüler, kuzular).
 - `Core`: `GameModeManager` (Developer / Default mod). `Interaction`: developer mod fare etkileşimi.
 - `World/Navigation`: `GridPathfinder` (A*, hücre hızlarına göre). `Units`: hareket, seçim, yol göstergesi, `LootCarrier`
   (eldeki loot), `Units/Jobs` (`HitObjectJob`, `BuildJob`, `AttackJob` + `Arrow`, `EnterBuildingJob`, `CarryLootJob`,
-  `StockLootJob`, `WithdrawJob`, `Approach` + `WorkSpots`). `Interaction`: eylem menüsü, `BuildMenuController`, `BuildingWindows`. `Camera`: RTS kamera. `Editor`: menüler, varsayılan asset kurucu, MapGenerator Inspector'ı.
+  `StockLootJob`, `WithdrawJob`, `Approach` + `WorkSpots`, rutin işleri `RoutineJobs`: yemek, uyku, eğlence, devriye,
+  hastane, rahip şifası, fırın, taşıma, sürü), `Combat` (`ICombatTarget`, `HitInfo`), `StatusEffects` (sersemleme,
+  kanama, zırh kırma). `Interaction`: eylem menüsü, `BuildMenuController`, `BuildingWindows`, `CharacterWindows`
+  (karakter listesi, Bio + sekmeler, Schedule, Work, Training). `Camera`: RTS kamera. `Editor`: menüler, varsayılan asset kurucu, MapGenerator Inspector'ı.
 
 Kodlar ve yorumlar İngilizce yazılır.
 

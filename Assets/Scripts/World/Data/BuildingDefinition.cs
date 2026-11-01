@@ -25,6 +25,22 @@ namespace KingOfNothing.World
         Furnace,
         /// <summary>Gold mine: villagers go inside and bring gold out (piles at the entrance).</summary>
         GoldMine,
+        /// <summary>Scarecrow: soldiers train on it during their work hours.</summary>
+        Scarecrow,
+    }
+
+    /// <summary>One thing the furnace makes (melting gold into coins, cooking meat...).</summary>
+    [Serializable]
+    public class FurnaceRecipe
+    {
+        public string name = "Recipe";
+        public List<DropEntry> inputs = new List<DropEntry>();
+        public SpawnableDefinition output;
+        [Min(1)] public int outputAmount = 1;
+        [Tooltip("Seconds of one cycle for a baker with baking 10 (faster / slower with the stat).")]
+        [Min(0.1f)] public float seconds = 8f;
+        [Tooltip("Cooking (meals): bakers with Feast Meal / Hearth Master make special meals; the extra portion chance applies.")]
+        public bool cooking;
     }
 
     /// <summary>The three lives of a building.</summary>
@@ -152,8 +168,12 @@ namespace KingOfNothing.World
         public bool unlocksPriest;
 
         [Header("Army house")]
+        [Tooltip("Health one paid healing gives (the church; once a day per character).")]
+        [Min(0)] public int healAmount = 20;
         [Tooltip("Villagers and soldiers can change their class here (warrior, lancer, archer).")]
         public bool allowsClassChange;
+        [Tooltip("The storage belongs to the building (school, army house, church: training materials): it is not part of the kingdom's stores.")]
+        public bool privateStorage;
 
         [Header("Furnace")]
         public SpawnableDefinition furnaceInputA;
@@ -164,6 +184,8 @@ namespace KingOfNothing.World
         [Min(1)] public int furnaceOutputAmount = 1;
         [Tooltip("Seconds to melt one batch.")]
         [Min(0.1f)] public float furnaceSeconds = 8f;
+        [Tooltip("What the furnace makes. Empty = the single recipe above (input A + input B -> output).")]
+        public List<FurnaceRecipe> furnaceRecipes = new List<FurnaceRecipe>();
         [Tooltip("Smoke animation (Dust_01) shown while the furnace works.")]
         public Sprite[] smokeFrames = new Sprite[0];
         [Tooltip("How high the smoke rises (cells).")]
@@ -191,7 +213,23 @@ namespace KingOfNothing.World
         public bool HasInventory => inventorySlots > 0;
         public bool IsMine => buildingType == BuildingType.GoldMine && mineOutput != null;
         public bool HasBridgeTiles => tileStart != null && tileMiddle != null && tileEnd != null;
-        public bool IsFurnace => buildingType == BuildingType.Furnace && furnaceOutput != null;
+        public bool IsFurnace => buildingType == BuildingType.Furnace && (furnaceOutput != null || (furnaceRecipes != null && furnaceRecipes.Count > 0));
+
+        /// <summary>The recipes of the furnace (the old single recipe when the list is empty).</summary>
+        public List<FurnaceRecipe> Recipes
+        {
+            get
+            {
+                if (furnaceRecipes != null && furnaceRecipes.Count > 0) return furnaceRecipes;
+                var list = new List<FurnaceRecipe>();
+                if (furnaceOutput == null) return list;
+                var r = new FurnaceRecipe { name = furnaceOutput.DisplayName, output = furnaceOutput, outputAmount = furnaceOutputAmount, seconds = furnaceSeconds };
+                if (furnaceInputA != null) r.inputs.Add(new DropEntry(furnaceInputA, furnaceInputAAmount));
+                if (furnaceInputB != null) r.inputs.Add(new DropEntry(furnaceInputB, furnaceInputBAmount));
+                list.Add(r);
+                return list;
+            }
+        }
         public Sprite MenuIcon => menuIcon != null ? menuIcon : PreviewSprite;
 
         /// <summary>Health from which the finished sprite is shown while building (the highest construction stage).</summary>

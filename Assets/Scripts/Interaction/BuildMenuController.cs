@@ -239,10 +239,15 @@ namespace KingOfNothing.Interaction
             // Bottom left: build button and the game day
             var clock = GameClock.Instance;
             string day = clock != null ? $"Day {clock.Day} ({Mathf.FloorToInt(clock.DayProgress * 24f):00}:00)" : "";
-            buttonRect = new Rect(10f, Screen.height - 40f, 270f, 30f);
+            buttonRect = new Rect(10f, Screen.height - 40f, 560f, 30f);
             GUILayout.BeginArea(buttonRect);
             using (new GUILayout.HorizontalScope())
             {
+                // Characters, Schedule and Work (left of Build)
+                var windows = CharacterWindows.Ensure();
+                if (GUILayout.Toggle(windows.ListOpen, "Characters", GUI.skin.button, GUILayout.Width(90f)) != windows.ListOpen) windows.ToggleList();
+                if (GUILayout.Toggle(windows.ScheduleOpen, "Schedule", GUI.skin.button, GUILayout.Width(80f)) != windows.ScheduleOpen) windows.ToggleSchedule();
+                if (GUILayout.Toggle(windows.WorkOpen, "Work", GUI.skin.button, GUILayout.Width(60f)) != windows.WorkOpen) windows.ToggleWork();
                 if (GUILayout.Button(open ? $"Close build menu ({Settings.buildMenuKey})" : $"Build ({Settings.buildMenuKey})", GUILayout.Width(150f)))
                 {
                     if (placing != null) CancelPlacement();
@@ -263,6 +268,7 @@ namespace KingOfNothing.Interaction
             }
 
             if (!open) return;
+            windowRect.x = 250f;
             windowRect.y = Screen.height - 50f - windowRect.height;
             windowRect = GUILayout.Window(WindowId, windowRect, DrawWindow, "Build", UiStyle.Window, GUILayout.Width(320f));
             ScreenUi.Block(windowRect);
@@ -289,7 +295,7 @@ namespace KingOfNothing.Interaction
                 var item = items[i];
                 contents.TryGetValue(item, out int count);
                 var slot = new Rect(bar.x + 6f + i * cell, bar.y + 3f, cell, height - 6f);
-                DrawSprite(new Rect(slot.x, slot.y, 26f, 26f), item.PreviewSprite);
+                DrawItem(new Rect(slot.x, slot.y, 26f, 26f), item);
                 GUI.Label(new Rect(slot.x + 30f, slot.y, cell - 30f, 26f), new GUIContent(count.ToString(), item.DisplayName), resourceStyle);
             }
             ScreenUi.Block(bar);
@@ -339,6 +345,16 @@ namespace KingOfNothing.Interaction
             foreach (var c in definition.buildCost)
                 if (c != null && c.item != null && c.amount > 0) parts.Add($"{c.amount} {c.item.DisplayName}");
             return parts.Count == 0 ? "Free" : string.Join(", ", parts);
+        }
+
+        /// <summary>Draws an item's sprite with its tint (cooked meat...).</summary>
+        public static void DrawItem(Rect area, SpawnableDefinition item)
+        {
+            if (item == null) return;
+            var old = GUI.color;
+            GUI.color = item.Tint;
+            DrawSprite(area, item.PreviewSprite);
+            GUI.color = old;
         }
 
         /// <summary>Draws a sprite of a sliced texture into a GUI rect (keeps the aspect).</summary>

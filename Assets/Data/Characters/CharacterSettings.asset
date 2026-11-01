@@ -1,0 +1,107 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9d3fafa5913e9943a55f7c1f907910c, type: 3}
+  m_Name: CharacterSettings
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.Characters.CharacterSettings
+  warriorAvatar: {fileID: 21300000, guid: 2334fa2b3b6b3492281b0993c123cfac, type: 3}
+  lancerAvatar: {fileID: 21300000, guid: 1ae77def86fe54f889da24e43f32ae32, type: 3}
+  archerAvatar: {fileID: 21300000, guid: 8fd2d0449599e4f7a9a1f1f170b6a2b0, type: 3}
+  priestAvatar: {fileID: 21300000, guid: f846c6072ceb0445bbcb59c41b57a5cb, type: 3}
+  villagerAvatar: {fileID: 21300000, guid: 3eccc0fa0d72e4392b563e6bbf6005c8, type: 3}
+  zeroChance: 0.1
+  rollMin: 1
+  rollMax: 3
+  maxZeroStats: 3
+  lifeMin: 1
+  lifeMax: 3
+  satietyLossPerHour: 3
+  eatThreshold: 50
+  starvingHealthLossPerHour: 2
+  sleepRegenInBed: 3
+  sleepRegenOnGround: 1
+  recreationMoralePerHour: 6
+  sleepMoralePerHour: 1
+  workMoraleLossPerHour: 1
+  foodSearchRadius: 40
+  mealSeconds: 2
+  startHour: 6
+  defaultSchedule: 020000000200000002000000020000000200000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000100000001000000010000000200000002000000
+  settlementRadius: 25
+  repairBelow: 0.85
+  maxBuildersPerSite: 4
+  patrolRadiusMin: 6
+  patrolRadiusMax: 12
+  patrolPause: 2
+  detectRadius: 8
+  recreationRadius: 6
+  chatSeconds: 5
+  foodStockTarget: 10
+  scarecrowArcherDistance: 4.5
+  thinkInterval: 0.5
+  xpArrow: {fileID: 21300000, guid: fbee8984e8c234190b7c5f6e10dbd4a7, type: 3}
+  xpColor: {r: 0.55, g: 1, b: 0.45, a: 1}
+  levelUpColor: {r: 1, g: 0.85, b: 0.25, a: 1}
+  popupSeconds: 3
+  popupFadeSeconds: 2
+  popupRiseSpeed: 0.15
+  popupHeight: 1.6
+  popupCharacterSize: 0.045
+  chopMark: {fileID: 21300000, guid: 49df2e0fb77954f0aa56465bfe992c16, type: 3}
+  mineMark: {fileID: 21300000, guid: c3ff625e78b1145eaa2ebed586379354, type: 3}
+  harvestMark: {fileID: 21300000, guid: f79e783d7d44f49c0a1cef17b11c736a, type: 3}
+  huntMark: {fileID: 21300000, guid: f79e783d7d44f49c0a1cef17b11c736a, type: 3}
+  markScale: 0.45
+  recreationIcon: {fileID: 21300000, guid: 41574e2742c0b4b238ba415d423bf99a, type: 3}
+  rawMeat: {fileID: 11400000, guid: 38a864700ff49d443b840f67fbc33d83, type: 2}
+  cookedMeat: {fileID: 11400000, guid: 1ac632fa3ec2b0a45b68872ffb6d0fbd, type: 2}
+  feastMeat: {fileID: 11400000, guid: 3f35d15a852fe164cb029cd7aee60be1, type: 2}
+  masterMeat: {fileID: 11400000, guid: 98e63005b16a3694a9f19447728c3974, type: 2}
+  sheepIdle:
+  - {fileID: -6879290243380990860, guid: efdf568727e0b4919a5e88e2e9d1f93b, type: 3}
+  - {fileID: 6416055995298698269, guid: efdf568727e0b4919a5e88e2e9d1f93b, type: 3}
+  - {fileID: -1385137418063276101, guid: efdf568727e0b4919a5e88e2e9d1f93b, type: 3}
+  - {fileID: -6629803274111058658, guid: efdf568727e0b4919a5e88e2e9d1f93b, type: 3}
+  - {fileID: -8493763510348472219, guid: efdf568727e0b4919a5e88e2e9d1f93b, type: 3}
+  - {fileID: 6094259631630437551, guid: efdf568727e0b4919a5e88e2e9d1f93b, type: 3}
+  sheepMove:
+  - {fileID: 4671501159646219437, guid: 856b7dfa4baa342ae8083080d963531b, type: 3}
+  - {fileID: -6465609930013442711, guid: 856b7dfa4baa342ae8083080d963531b, type: 3}
+  - {fileID: 8883252912783768555, guid: 856b7dfa4baa342ae8083080d963531b, type: 3}
+  - {fileID: -6556170278312625396, guid: 856b7dfa4baa342ae8083080d963531b, type: 3}
+  sheepGrass:
+  - {fileID: 2319856288088244163, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: -3562576923617104382, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: -7349116212589438002, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: -4662078214707794950, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: -6617081139439527395, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: -6189691028752884913, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: 7296908222152865420, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: -2352777100355612254, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: -3659949348702606643, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: 5630160346097760845, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: 5439255145328125195, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  - {fileID: -8736350461500244166, guid: 56645d102e97241eeb6d01ca2987467d, type: 3}
+  sheepScale: 0.5
+  sheepHealth: 30
+  sheepWalkSpeed: 0.8
+  sheepFleeSpeed: 2.4
+  sheepFleeSeconds: 4
+  sheepMeatMin: 2
+  sheepMeatMax: 4
+  herdCount: 6
+  herdSizeMin: 3
+  herdSizeMax: 5
+  herdDistanceMin: 12
+  herdDistanceMax: 45
+  lambChancePerDay: 0.3
+  maxSheep: 40
+  dataVersion: 1

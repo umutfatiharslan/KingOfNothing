@@ -61,6 +61,13 @@ MonoBehaviour:
     interactUpSide: []
     interactDown: []
     interactDownSide: []
+  guard:
+  - {fileID: -3014082438352978858, guid: b67ea81b372ff482480f6b94db552857, type: 3}
+  - {fileID: -8379219403140719787, guid: b67ea81b372ff482480f6b94db552857, type: 3}
+  - {fileID: 9082096816701911304, guid: b67ea81b372ff482480f6b94db552857, type: 3}
+  - {fileID: -3415142777385630793, guid: b67ea81b372ff482480f6b94db552857, type: 3}
+  - {fileID: -5672506429785410100, guid: b67ea81b372ff482480f6b94db552857, type: 3}
+  - {fileID: 2401901321164802203, guid: b67ea81b372ff482480f6b94db552857, type: 3}
   idleWood: []
   runWood: []
   idleGold: []

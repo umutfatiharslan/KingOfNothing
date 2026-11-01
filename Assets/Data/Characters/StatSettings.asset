@@ -1,0 +1,312 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f72de3a519b52324d9661ab1aa849cca, type: 3}
+  m_Name: StatSettings
+  m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.Characters.StatSettings
+  xpFirstLevel: 200
+  xpPerLevel: 100
+  trainingMultiplierPerLevel: 0.1
+  buildHitXp: 2
+  buildCompleteXp: 20
+  chopHitXp: 2
+  treeFelledXp: 10
+  mineHitXp: 2
+  mineGoldXp: 5
+  harvestHitXp: 2
+  harvestDoneXp: 5
+  huntHitXp: 3
+  huntKillXp: 10
+  furnaceCycleXp: 10
+  deliveredItemXp: 1
+  arrowXp: 2
+  arrowHitXp: 2
+  meleeHitXp: 2
+  defenseXpPerDamage: 0.2
+  defenseTrainingHits: 4
+  healthXpPerPoint: 0.2
+  healingXpPerPoint: 1
+  walkCellsPerXp: 10
+  mealXp: 5
+  buildPowerPerLevel: 1
+  decayReductionPerLevel: 0.025
+  miningExtraChancePerLevel: 0.05
+  mineSecondsBase: 125
+  mineSecondsPerLevel: 5
+  mineSecondsMin: 5
+  farmingBonusPerLevel: 0.015
+  huntingBonusPerLevel: 0.015
+  fleeDistanceBase: 5
+  fleeDistancePerLevel: 0.2
+  bakingSpeedBase: 0.7
+  bakingSpeedPerLevel: 0.03
+  bakingFuelSavingPerLevel: 0.015
+  bakingSatietyPerLevel: 0.01
+  efficiencySavingPerLevel: 0.015
+  archeryAccuracyBase: 40
+  archeryAccuracyPerLevel: 3
+  archeryAccuracyMax: 95
+  archerySpeedBase: 0.7
+  archerySpeedPerLevel: 0.03
+  archeryRangeBase: 4
+  archeryRangePerLevel: 0.4
+  friendlyFireBase: 20
+  swordSpeedBase: 0.7
+  swordSpeedPerLevel: 0.03
+  spearReachBase: 1
+  spearReachPerLevel: 0.1
+  spearBlockPerLevel: 0.02
+  defenseReductionPerLevel: 0.01
+  healthBase: 100
+  healthPerLevel: 5
+  healingRadiusBase: 1
+  healingRadiusPerLevel: 0.1
+  healingInterval: 2
+  walkSpeedBase: 0.7
+  walkSpeedPerLevel: 0.03
+  hungerRateBase: 1.5
+  hungerRatePerLevel: 0.05
+  foundationHealthPerLevel: 100
+  masterSpeedMultiplier: 2
+  critChance10: 0.2
+  critChance15: 0.6
+  foremanSpeedBonus: 0.25
+  foremanRestoreShare: 0.1
+  hammerStructureMultiplier: 2
+  hammerSalvageShare: 0.75
+  stunSeconds: 1.5
+  stunCooldown: 10
+  extraWoodChance5: 0.3
+  carryBonus5: 5
+  regrowChance10: 0.4
+  regrowChance15: 0.6
+  regrowChance20: 0.8
+  regrowHours: 12
+  fallRadius15: 2
+  regrowSpeed20: 2
+  firstChopBonus20: 0.5
+  saplingTreesPerDay: 5
+  bleedPerHour: 10
+  bleedTotal: 50
+  ruinSalvageShare5: 0.25
+  mineCapacityBonus10: 1
+  reserveKeepChance15: 0.25
+  armorBreakPerHit: 1
+  armorBreakMaxHits: 10
+  armorBreakHours: 1
+  armorBreakBuildingBonus: 0.01
+  curiousStopSeconds10: 3
+  huntingPartyBonus15: 0.5
+  huntingPartyRadius: 2
+  knifeDoubleStrike: 2
+  woodSaving5: 1
+  extraCoinChance10: 0.2
+  feastMorale15: 5
+  feastWorkBonus15: 0.1
+  feastHours15: 1
+  masterMealsPerDay: 3
+  masterXpShare: 0.5
+  masterXpMultiplier: 2
+  masterHours: 24
+  discount10: 0.1
+  salvageShare15: 0.8
+  freeMaterialEvery20: 5
+  doubleShotChance10: 0.25
+  pierceDamage15: 0.5
+  pierceRadius15: 3
+  eagleRangeBonus20: 5
+  eagleFirstShotMultiplier20: 3
+  blockChance5: 0.3
+  comboBonus10: 0.5
+  cleaveDamage15: 0.5
+  cleaveRadius15: 1.2
+  lastStandMultiplier20: 2
+  lastStandThreshold20: 0.25
+  spearWallReduction10: 0.1
+  spearWallRadius10: 1.2
+  pierceCells15: 2
+  whirlwindInterval20: 12
+  whirlwindRadius20: 2
+  firstHitReduction5: 0.25
+  firstHitReduction15: 0.5
+  coverReduction10: 0.1
+  coverRadius10: 2
+  knockbackChance15: 0.2
+  secondWindThreshold: 0.3
+  secondWindHeal: 0.1
+  secondWindSeconds: 5
+  morningHeal10: 0.05
+  ironBodyShield15: 0.15
+  ironBodySeconds15: 30
+  immortalWillDays20: 5
+  prayerSeconds: 5
+  commandBoost5: 0.5
+  commandBoostSeconds5: 2
+  lowHealthBoost10: 0.4
+  lowHealthThreshold10: 0.3
+  dodgeArrow15: 0.15
+  dodgeSword15: 0.1
+  dodgeSpear15: 0.08
+  dodgeTool15: 0.1
+  dodgeCollapse15: 0.3
+  leaderBonus20: 0.1
+  insideHungerRate5: 0.5
+  rawFoodShare10: 0.25
+  hungryThreshold15: 25
+  hungryBonus15: 0.15
+  overeatHealth20: 5
+  overeatMaxHealth20: 200
+  trainingHours:
+  - 0
+  - 2
+  - 3
+  - 3
+  - 4
+  - 5
+  - 7
+  - 9
+  - 11
+  - 14
+  - 18
+  - 24
+  - 30
+  - 38
+  - 49
+  - 63
+  - 80
+  - 103
+  - 131
+  - 168
+  trainingMinHealth: 0.25
+  armyHealthLossChance: 0.2
+  trainings:
+  - stat: 0
+    building: 1
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+      baseAmount: 5
+      perLevel: 5
+    - item: {fileID: 11400000, guid: 7159892eb7cf8fa41892075218a83164, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 1
+    building: 1
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 2
+    building: 1
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 7159892eb7cf8fa41892075218a83164, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 3
+    building: 1
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 787916a446844144296f7ba7c63444f4, type: 2}
+      baseAmount: 5
+      perLevel: 5
+    - item: {fileID: 11400000, guid: 6d5e5d4d194de1743b911a06ca6e3b60, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 11
+    building: 1
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 38a864700ff49d443b840f67fbc33d83, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 12
+    building: 1
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 13
+    building: 1
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 4
+    building: 1
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 7159892eb7cf8fa41892075218a83164, type: 2}
+      baseAmount: 5
+      perLevel: 5
+    - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 7
+    building: 2
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 14
+    building: 2
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 15
+    building: 2
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 9
+    building: 2
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 7159892eb7cf8fa41892075218a83164, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 16
+    building: 2
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 45faa0674740e67479121f85a390c53f, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  - stat: 17
+    building: 3
+    coinBase: 2
+    coinPerLevel: 2
+    materials:
+    - item: {fileID: 11400000, guid: 6d5e5d4d194de1743b911a06ca6e3b60, type: 2}
+      baseAmount: 5
+      perLevel: 5
+  dataVersion: 1

@@ -229,13 +229,16 @@ namespace KingOfNothing.EditorTools
             public SpawnableDefinition WoodResource, GoldResource, GoldResourceHighlight, PumpkinItem;
             // Furnace output and the buildings of the build menu
             public SpawnableDefinition GoldCoin;
+            // Food (sheep meat, cooked in the furnace; feast / master meals of the bakers) and bush branches
+            public SpawnableDefinition RawMeat, CookedMeat, FeastMeat, MasterMeat, BushBranch;
+            public BuildingDefinition ScarecrowBuilding;
             public readonly List<BuildingDefinition> Buildings = new List<BuildingDefinition>();
 
             public IEnumerable<SpawnableDefinition> DeveloperExtras => new[]
             {
                 Signpost1, Signpost2, Scarecrow, Rock, RockOld1, RockOld2, SmallBushes[1], SmallBushes[2], SmallBushes[3],
                 Grass, GrassBig, GoldMineActive, GoldMineInactive, WoodResource, GoldResource, GoldResourceHighlight, PumpkinItem,
-                GoldCoin,
+                GoldCoin, RawMeat, CookedMeat, FeastMeat, MasterMeat, BushBranch,
             }.Concat(Buildings).Where(x => x != null);
         }
 
@@ -441,13 +444,82 @@ namespace KingOfNothing.EditorTools
             s.GoldCoin = Spawnable("GoldCoin", "Gold Coin", WorldObjectKind.Item, TS + "UI Elements/Icons/Icon_03.png", one, 0.1f, false, false,
                 ResourceType.GoldCoin, 1, 1);
 
+            // Food: raw sheep meat (cooked in the furnace), cooked meat and the bakers' special meals (tinted copies)
+            s.RawMeat = Spawnable("RawMeat", "Raw Meat", WorldObjectKind.Item, MeatSprite, one, 0.3f, false, false, ResourceType.Meat, 1, 1);
+            s.CookedMeat = Spawnable("CookedMeat", "Cooked Meat", WorldObjectKind.Item, MeatSprite, one, 0.3f, false, false, ResourceType.CookedMeat, 1, 1);
+            s.FeastMeat = Spawnable("FeastMeat", "Feast Meal", WorldObjectKind.Item, MeatSprite, one, 0.3f, false, false, ResourceType.CookedMeat, 1, 1);
+            s.MasterMeat = Spawnable("MasterMeat", "Master's Meal", WorldObjectKind.Item, MeatSprite, one, 0.3f, false, false, ResourceType.CookedMeat, 1, 1);
+            // Bush branch: what harvested bushes drop (the small green bush, smaller)
+            s.BushBranch = Spawnable("BushBranch", "Bush Branch", WorldObjectKind.Item, Deco(7), one, 0.3f, false, false, ResourceType.None, 1, 1);
+
             ApplyMovementRules(s);
             ApplyGameplayTables(s);
             Passable(s.GoldCoin);
             Gameplay(s.GoldCoin, -1, true, 10, null, Drop(s.GoldCoin, 1));
             FixLoot(s);
+            ApplyFood(s);
             BuildBuildings(s);
             return s;
+        }
+
+        const string MeatSprite = TS + "Pawn and Resources/Meat/Meat Resource/Meat Resource.png";
+
+        /// <summary>
+        /// Food items and bush branches (stat table round): what each food fills (satiety), raw meat (only edible with
+        /// Iron Stomach, at 25%), the colours of the cooked / special meals, and the branches bushes drop when
+        /// harvested. Applied once: values tuned in the Inspector are kept.
+        /// </summary>
+        static void ApplyFood(Spawnables s)
+        {
+            const bool movable = true;
+            foreach (var item in new[] { s.RawMeat, s.CookedMeat, s.FeastMeat, s.MasterMeat, s.BushBranch })
+            {
+                if (item == null) continue;
+                Passable(item);
+                Gameplay(item, -1, movable, 10, null, Drop(item, 1));
+            }
+            Food(s.RawMeat, 30, true, Color.white);
+            Food(s.CookedMeat, 50, false, new Color(0.72f, 0.5f, 0.32f));
+            Food(s.FeastMeat, 55, false, new Color(1f, 0.85f, 0.35f));
+            Food(s.MasterMeat, 60, false, new Color(0.78f, 0.55f, 1f));
+            Food(s.PumpkinItem, 40, false, Color.white);
+            Food(s.Mushrooms[1], 15, false, Color.white);
+            if (s.BushBranch != null && (overwrite || Mathf.Approximately(s.BushBranch.VisualScale, 1f)))
+            {
+                s.BushBranch.EditorSetVisualScale(0.6f);
+                EditorUtility.SetDirty(s.BushBranch);
+            }
+
+            // Harvested bushes drop branches (big bushes more)
+            void Branches(SpawnableDefinition bush, int amount)
+            {
+                if (bush == null || s.BushBranch == null) return;
+                if (bush.EditorAddDrop(Drop(s.BushBranch, amount))) EditorUtility.SetDirty(bush);
+            }
+            Branches(s.Bushes[1], 3);
+            Branches(s.Bushes[2], 1);
+            Branches(s.Bushes[3], 2);
+            Branches(s.Bushes[4], 1);
+            Branches(s.SmallBushes[1], 1);
+            Branches(s.SmallBushes[2], 2);
+            Branches(s.SmallBushes[3], 3);
+        }
+
+        static void Food(SpawnableDefinition item, int value, bool raw, Color tint)
+        {
+            if (item == null) return;
+            bool changed = false;
+            if (overwrite || item.FoodValue == 0)
+            {
+                item.EditorSetFood(value, raw);
+                changed = true;
+            }
+            if (tint != Color.white && (overwrite || item.Tint == Color.white))
+            {
+                item.EditorSetTint(tint);
+                changed = true;
+            }
+            if (changed) EditorUtility.SetDirty(item);
         }
 
         /// <summary>
@@ -891,6 +963,57 @@ namespace KingOfNothing.EditorTools
             if (activeMine != null) s.GoldMineActive = activeMine;
             if (buildMine != null) s.GoldMineInactive = buildMine;
 
+            // Scarecrow: warriors, lancers and archers train on it in their work hours (4 wood, 2 stone, 1 pumpkin)
+            var scarecrow = BuildingAsset("Scarecrow", "Scarecrow", BuildingType.Scarecrow, First(Deco(18)), new Vector2Int(1, 1), 0.3f,
+                500, 0, new Vector2(0.4f, 0.3f), out c);
+            if (c)
+            {
+                scarecrow.description = "Training dummy: warriors, lancers and archers train on it in their work hours.";
+                scarecrow.capacity = 0;
+                scarecrow.EditorSetMovement(false, 1f, new Vector2(0.4f, 0.3f), new Vector2(0f, -0.1f), false);
+                scarecrow.buildCost = Cost(s, 4, 2);
+                if (s.PumpkinItem != null) scarecrow.buildCost.Add(new DropEntry(s.PumpkinItem, 1));
+            }
+            s.ScarecrowBuilding = scarecrow;
+
+            // Patch 4 (stat table round), once per asset: the training buildings get their own storage (trainings
+            // are paid from it), the church heals 20 health for 40 coins (once a day per character), the furnace has
+            // recipes (gold coins, cooked meat) and every building's health is divided by 5 (one hit = the stat level).
+            foreach (var b in new[] { school, army, church })
+                if (Patch4(b))
+                {
+                    b.inventorySlots = 6;
+                    b.slotCapacity = 100;
+                    b.privateStorage = true;
+                }
+            if (Patch4(church))
+            {
+                church.healCost = 40;
+                church.healAmount = 20;
+                church.description = "Monastery: heals 20 health for 40 gold coins (once a day per character); priests train healing here.";
+            }
+            if (Patch4(school)) school.description = "Barracks: villagers train their work stats here (paid from its own storage).";
+            if (Patch4(army)) army.description = "Archery: soldiers train their war stats here (paid from its own storage); class changes.";
+            if (Patch4(furnace))
+            {
+                furnace.description = "A baker melts gold with wood into gold coins and cooks raw meat. Placeholder art.";
+                furnace.inventorySlots = 6;
+                furnace.slotCapacity = 30;
+                furnace.furnaceRecipes = new List<FurnaceRecipe>
+                {
+                    new FurnaceRecipe
+                    {
+                        name = "Gold coin", inputs = new List<DropEntry> { new DropEntry(s.GoldResource, 1), new DropEntry(s.WoodResource, 3) },
+                        output = s.GoldCoin, outputAmount = 1, seconds = 8f, cooking = false,
+                    },
+                    new FurnaceRecipe
+                    {
+                        name = "Cooked meat", inputs = new List<DropEntry> { new DropEntry(s.RawMeat, 1), new DropEntry(s.WoodResource, 1) },
+                        output = s.CookedMeat, outputAmount = 1, seconds = 6f, cooking = true,
+                    },
+                };
+            }
+
             s.Buildings.Add(castle);
             s.Buildings.Add(school);
             s.Buildings.Add(army);
@@ -901,7 +1024,32 @@ namespace KingOfNothing.EditorTools
             s.Buildings.Add(bridgeV);
             s.Buildings.Add(furnace);
             if (buildMine != null) s.Buildings.Add(buildMine);
+            s.Buildings.Add(scarecrow);
+            foreach (var b in s.Buildings) DivideHealth(b);
+            foreach (var b in new[] { ruinMine, activeMine }) DivideHealth(b);
             foreach (var b in s.Buildings) if (b != null) EditorUtility.SetDirty(b);
+        }
+
+        const int StatRoundBuildingVersion = 4;
+
+        static bool Patch4(BuildingDefinition b) => b != null && b.EditorBuildingDataVersion < StatRoundBuildingVersion;
+
+        /// <summary>Health / 5 (full, destroyed, stage thresholds, manned tower bonus), once per asset (patch 4).</summary>
+        static void DivideHealth(BuildingDefinition b)
+        {
+            if (!Patch4(b)) return;
+            int Div(int value) => value == int.MaxValue || value <= 0 ? value : Mathf.Max(1, Mathf.RoundToInt(value / 5f));
+            b.EditorSetMaxHealth(Div(b.MaxHealth));
+            b.destroyedHealth = Div(b.destroyedHealth);
+            b.mannedHealthBonus = Div(b.mannedHealthBonus);
+            foreach (var list in new[] { b.constructionStages, b.destroyedStages })
+                if (list != null)
+                    foreach (var stage in list)
+                        if (stage != null) stage.belowHealth = Div(stage.belowHealth);
+            if (b.buildingType == BuildingType.Tower && !string.IsNullOrEmpty(b.description))
+                b.description = b.description.Replace("+500 health", $"+{b.mannedHealthBonus} health");
+            b.EditorBuildingDataVersion = StatRoundBuildingVersion;
+            EditorUtility.SetDirty(b);
         }
 
         // ================================================================== classes and gameplay settings
@@ -979,7 +1127,74 @@ namespace KingOfNothing.EditorTools
             if (fresh || settings.archerAnimations == null) settings.archerAnimations = archer;
             if (fresh || settings.priestAnimations == null) settings.priestAnimations = monk;
             if (fresh || settings.arrowSprite == null) settings.arrowSprite = arrow;
+
+            // Guard / defence frames (Shield Stance, spear block)
+            if (warrior != null && (overwrite || warrior.guard == null || warrior.guard.Length == 0))
+            {
+                warrior.guard = Frames(UnitsFolder + "Warrior/Warrior_Guard.png");
+                EditorUtility.SetDirty(warrior);
+            }
+            if (lancer != null && (overwrite || lancer.guard == null || lancer.guard.Length == 0))
+            {
+                lancer.guard = Frames(UnitsFolder + "Lancer/Lancer_Right_Defence.png");
+                EditorUtility.SetDirty(lancer);
+            }
+
+            settings.stats = BuildStatSettings(s);
+            settings.characters = BuildCharacterSettings(s);
             EditorUtility.SetDirty(settings);
+        }
+
+        const string AvatarFolder = TS + "UI Elements/Human Avatars/";
+        const string IconFolder = TS + "UI Elements/Icons/";
+        const string ToolFolder = TS + "Pawn and Resources/Tools/";
+        const string SheepFolder = TS + "Pawn and Resources/Meat/Sheep/";
+
+        /// <summary>Stat rules (experience, effects, milestones, trainings): the trainings get the default items once.</summary>
+        static StatSettings BuildStatSettings(Spawnables s)
+        {
+            var stats = StatSettings.LoadOrCreateDefault();
+            bool missingItems = stats.trainings == null || stats.trainings.Count == 0 ||
+                                stats.trainings.Exists(t => t != null && t.materials.Exists(m => m == null || m.item == null));
+            if (overwrite || stats.EditorDataVersion < 1 || missingItems)
+            {
+                stats.trainings = StatSettings.DefaultTrainings(s.WoodResource, s.Rock, s.GoldResource, s.BushBranch, s.Mushrooms[1], s.RawMeat,
+                    s.PumpkinItem, null);
+                stats.EditorDataVersion = 1;
+                EditorUtility.SetDirty(stats);
+            }
+            return stats;
+        }
+
+        /// <summary>Character rules (avatars, needs, schedule, routine, popups, marks, meat, sheep): the art once.</summary>
+        static CharacterSettings BuildCharacterSettings(Spawnables s)
+        {
+            var c = CharacterSettings.LoadOrCreateDefault();
+            bool all = overwrite || c.EditorDataVersion < 1;
+            T Keep<T>(T current, T value) where T : Object => all || current == null ? value : current;
+            Sprite[] KeepFrames(Sprite[] current, string path) => all || current == null || current.Length == 0 ? Frames(path) : current;
+
+            c.warriorAvatar = Keep(c.warriorAvatar, First(AvatarFolder + "Avatars_01.png"));
+            c.lancerAvatar = Keep(c.lancerAvatar, First(AvatarFolder + "Avatars_02.png"));
+            c.archerAvatar = Keep(c.archerAvatar, First(AvatarFolder + "Avatars_03.png"));
+            c.priestAvatar = Keep(c.priestAvatar, First(AvatarFolder + "Avatars_04.png"));
+            c.villagerAvatar = Keep(c.villagerAvatar, First(AvatarFolder + "Avatars_05.png"));
+            c.xpArrow = Keep(c.xpArrow, First(IconFolder + "Icon_07.png"));
+            c.recreationIcon = Keep(c.recreationIcon, First(IconFolder + "Icon_12.png"));
+            c.chopMark = Keep(c.chopMark, First(ToolFolder + "Tool_02.png"));
+            c.mineMark = Keep(c.mineMark, First(ToolFolder + "Tool_04.png"));
+            c.harvestMark = Keep(c.harvestMark, First(ToolFolder + "Tool_03.png"));
+            c.huntMark = Keep(c.huntMark, First(ToolFolder + "Tool_03.png"));
+            c.rawMeat = Keep(c.rawMeat, s.RawMeat);
+            c.cookedMeat = Keep(c.cookedMeat, s.CookedMeat);
+            c.feastMeat = Keep(c.feastMeat, s.FeastMeat);
+            c.masterMeat = Keep(c.masterMeat, s.MasterMeat);
+            c.sheepIdle = KeepFrames(c.sheepIdle, SheepFolder + "Sheep_Idle.png");
+            c.sheepMove = KeepFrames(c.sheepMove, SheepFolder + "Sheep_Move.png");
+            c.sheepGrass = KeepFrames(c.sheepGrass, SheepFolder + "Sheep_Grass.png");
+            c.EditorDataVersion = 1;
+            EditorUtility.SetDirty(c);
+            return c;
         }
 
         // ================================================================== rule presets

@@ -41,7 +41,7 @@ namespace KingOfNothing.Interaction
         {
             KingOfNothing.Characters.VillagerRole.Villager, KingOfNothing.Characters.VillagerRole.Warrior,
             KingOfNothing.Characters.VillagerRole.Lancer, KingOfNothing.Characters.VillagerRole.Archer,
-            KingOfNothing.Characters.VillagerRole.Priest, KingOfNothing.Characters.VillagerRole.King,
+            KingOfNothing.Characters.VillagerRole.Priest,
         };
         const int WindowId = 0x4B4F4E;
 
@@ -581,7 +581,35 @@ namespace KingOfNothing.Interaction
                 }
             }
             if (GUILayout.Button(new GUIContent("Open saves folder", history.FilePath))) OpenSavesFolder();
+
+            // Characters, sheep, marks and the game time are saved in their own file
+            if (confirmCharacters && Time.unscaledTime > confirmCharactersUntil) confirmCharacters = false;
+            if (!confirmCharacters)
+            {
+                if (GUILayout.Button(new GUIContent("Reset characters", KingOfNothing.Characters.CharacterSave.FilePath)))
+                {
+                    confirmCharacters = true;
+                    confirmCharactersUntil = Time.unscaledTime + 5f;
+                }
+            }
+            else
+            {
+                GUILayout.Label("New party and sheep, the character save is deleted. Sure?");
+                using (new GUILayout.HorizontalScope())
+                {
+                    if (GUILayout.Button("Yes, reset characters"))
+                    {
+                        confirmCharacters = false;
+                        CancelAll();
+                        KingOfNothing.Characters.CharacterSave.ResetCharacters();
+                    }
+                    if (GUILayout.Button("Cancel")) confirmCharacters = false;
+                }
+            }
         }
+
+        bool confirmCharacters;
+        float confirmCharactersUntil;
 
         void Undo()
         {

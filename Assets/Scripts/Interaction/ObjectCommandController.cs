@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using KingOfNothing.Animals;
 using KingOfNothing.Characters;
 using KingOfNothing.Core;
 using KingOfNothing.Units;
@@ -104,6 +105,21 @@ namespace KingOfNothing.Interaction
             }
 
             if (menuOpen && escape) menuOpen = false;
+            if (herding) UpdateHerding(mouse, escape);
+        }
+
+        void UpdateHerding(Mouse mouse, bool escape)
+        {
+            CapturesMouse = true;
+            if (escape || mouse.rightButton.wasPressedThisFrame || herdSheep == null || herdShepherd == null)
+            {
+                herding = false;
+                return;
+            }
+            if (!mouse.leftButton.wasPressedThisFrame || ScreenUi.IsPointerOver(mouse.position.ReadValue())) return;
+            Vector2 world = cam.ScreenToWorldPoint(mouse.position.ReadValue());
+            herdShepherd.Worker.Assign(new HerdJob(herdSheep, world));
+            herding = false;
         }
 
         void EndPlacement()
@@ -171,7 +187,8 @@ namespace KingOfNothing.Interaction
             foreach (var verb in verbs)
             {
                 var targets = byVerb[verb];
-                var workers = new List<Unit>(workersAll);
+                // Only characters who can do this job at all (the stat is not 0)
+                var workers = workersAll.FindAll(u => HitObjectJob.CanWork(u, targets[0]));
                 var bushes = targets.FindAll(t => t.Definition != null && t.Definition.Kind == WorldObjectKind.Bush);
                 bool soldiersHelp = soldiersAll.Count > 0 && bushes.Count > 0 && bushes.Count == targets.Count;
                 if (soldiersHelp) workers.AddRange(soldiersAll);
@@ -182,9 +199,10 @@ namespace KingOfNothing.Interaction
                     targets = bushes;
                 }
                 bool canWork = workers.Count > 0;
+                string why = !canWork && workersAll.Count > 0 ? $" - nobody can ({StatInfo.Name(HitObjectJob.StatFor(workersAll[0], targets[0]))} 0)" : "";
                 var item = new MenuItem
                 {
-                    Label = targets.Count == 1 ? verb : $"{verb} ({targets.Count})",
+                    Label = (targets.Count == 1 ? verb : $"{verb} ({targets.Count})") + why,
                     Enabled = canWork,
                     Run = () => AssignWork(workers, targets, verb, false),
                 };
@@ -198,6 +216,25 @@ namespace KingOfNothing.Interaction
             }
             if (soldiersAll.Count > 0 && workersAll.Count == 0 && hittable.Count > 0 && menu.TrueForAll(m => !m.Enabled))
                 menu.Add(new MenuItem { Label = "Soldiers only cut bushes and attack buildings", Enabled = false });
+
+            AddDesignationEntries(group);
+
+            // Holy Halo (Healing 10): priests make stumps grow back
+            var stumps = group.FindAll(o => o is StumpObject st && !st.IsRegrowing);
+            if (stumps.Count > 0)
+            {
+                var priests = menuUnits.FindAll(u => u.Villager != null && u.Villager.Role == VillagerRole.Priest && u.Villager.Stats.Has(StatType.Healing, 10));
+                if (priests.Count > 0)
+                    menu.Add(new MenuItem
+                    {
+                        Label = stumps.Count == 1 ? "Make it grow back (priest)" : $"Make them grow back ({stumps.Count})",
+                        Run = () =>
+                        {
+                            for (int i = 0; i < stumps.Count; i++)
+                                priests[i % priests.Count].Worker.Assign(new RegrowStumpJob((StumpObject)stumps[i]), i >= priests.Count);
+                        },
+                    });
+            }
 
             // Loot (piles of items): carried in the hands until stocked in a building
             var loot = group.FindAll(IsLoot);
@@ -303,8 +340,8 @@ namespace KingOfNothing.Interaction
             bool site = !b.IsComplete && !b.IsTemplate;
             if (site)
             {
-                var wreckers = new List<Unit>(workers);
-                wreckers.AddRange(soldiers);
+                var wreckers = workers.FindAll(u => u.Villager == null || u.Villager.Stats.CanDo(StatType.Building) || StatEffects.CanFight(u));
+                wreckers.AddRange(soldiers.FindAll(AttackJob.CanAttack));
                 int share = Mathf.RoundToInt(MapData.Instance != null ? MapData.Instance.Gameplay.constructionSalvageShare * 100f : 50f);
                 menu.Add(new MenuItem
                 {
@@ -325,6 +362,42 @@ namespace KingOfNothing.Interaction
                 if (miners.Count == 0 && reason != null) mineLabel += $" ({reason})";
                 else if (miners.Count == 0 && hasUnits) mineLabel += " - villagers only";
                 menu.Add(new MenuItem { Label = mineLabel, Enabled = miners.Count > 0, Run = () => AssignEnter(miners, b) });
+            }
+
+            // Ruin Digger (Mining 5): dig the ruin away (25% of its cost as loot)
+            if (b.CanBeDug)
+            {
+                var diggers = workers.FindAll(u => u.Villager != null && u.Villager.Stats.Has(StatType.Mining, 5));
+                if (diggers.Count > 0)
+                    menu.Add(new MenuItem
+                    {
+                        Label = $"Dig the ruins ({Mathf.RoundToInt(StatSettings.Current.ruinSalvageShare5 * 100f)}% of the cost as loot, cannot be repaired then)",
+                        Run = () => { foreach (var u in diggers) u.Worker.Assign(new DigRuinsJob(b)); },
+                    });
+            }
+
+            // Scarecrow: soldiers train on it
+            if (info != null && b.Type == BuildingType.Scarecrow)
+            {
+                var trainees = soldiers.FindAll(AttackJob.CanAttack);
+                menu.Add(new MenuItem
+                {
+                    Label = !b.IsUsable ? "Train here (finish it first)" : trainees.Count > 0 ? "Train here" : "Train here - soldiers only",
+                    Enabled = b.IsUsable && trainees.Count > 0,
+                    Run = () => { foreach (var u in trainees) u.Worker.Assign(new AttackJob(new List<ICombatTarget> { b }, true)); },
+                });
+            }
+
+            // Furnace: a baker works it (it only runs with a baker)
+            if (info != null && info.IsFurnace)
+            {
+                var bakers = workers.FindAll(u => u.Villager == null || u.Villager.Stats.CanDo(StatType.Baking));
+                menu.Add(new MenuItem
+                {
+                    Label = !b.IsUsable ? "Work the furnace (not usable)" : bakers.Count > 0 ? "Work the furnace" : hasUnits ? "Work the furnace - bakers only" : "Work the furnace (select a baker)",
+                    Enabled = b.IsUsable && bakers.Count > 0,
+                    Run = () => PickWorker(bakers, b.GroundPoint).Worker.Assign(new FurnaceJob(b)),
+                });
             }
 
             if (info != null && b.Type == BuildingType.Tower)
@@ -375,21 +448,34 @@ namespace KingOfNothing.Interaction
                 });
                 if (info.IsFurnace)
                 {
-                    int coins = b.Inventory.Count(info.furnaceOutput);
-                    menu.Add(new MenuItem
+                    var outputs = new List<SpawnableDefinition>();
+                    var c = CharacterSettings.Current;
+                    foreach (var r in info.Recipes)
+                        foreach (var o in new[] { r.output, r.cooking ? c.feastMeat : null, r.cooking ? c.masterMeat : null })
+                            if (o != null && !outputs.Contains(o)) outputs.Add(o);
+                    foreach (var output in outputs)
                     {
-                        Label = $"Collect {info.furnaceOutput.DisplayName} ({coins})",
-                        Enabled = hasUnits && coins > 0 && b.IsUsable,
-                        Run = () => AssignWithdraw(new List<Unit>(menuUnits), b, info.furnaceOutput),
-                    });
+                        int count = b.Inventory.Count(output);
+                        if (count <= 0 && output != info.furnaceOutput) continue;
+                        var item = output;
+                        menu.Add(new MenuItem
+                        {
+                            Label = $"Collect {output.DisplayName} ({count})",
+                            Enabled = hasUnits && count > 0 && b.IsUsable,
+                            Run = () => AssignWithdraw(new List<Unit>(menuUnits), b, item),
+                        });
+                    }
                 }
             }
 
             // Soldiers attack buildings; villagers use the same attack on gold mines
-            var attackers = new List<Unit>(soldiers);
+            var attackers = soldiers.FindAll(AttackJob.CanAttack);
+            // Villagers with a tool fight milestone (War Hammer, Forest Keeper, Pickaxe Blow, Knife Master) fight too
+            attackers.AddRange(workers.FindAll(StatEffects.CanFight));
             // ... and on bridges (bridges can be torn down by everybody)
             bool bridge = info != null && b.Type == BuildingType.Bridge;
-            if (info != null && (b.Type == BuildingType.GoldMine || bridge)) attackers.AddRange(workers);
+            if (info != null && (b.Type == BuildingType.GoldMine || bridge))
+                foreach (var w in workers) if (!attackers.Contains(w)) attackers.Add(w);
             if (bridge && !site && b.CanBeHit)
             {
                 var breakers = new List<Unit>(attackers);
@@ -423,12 +509,36 @@ namespace KingOfNothing.Interaction
 
         // ------------------------------------------------------------------ unit menu
 
-        /// <summary>Right click on a character: tower and loot actions. False if there is nothing to offer.</summary>
-        public bool OpenUnitMenu(Unit unit, Vector2 screen)
+        /// <summary>Right click on a character: bio, routine, tower and loot actions. False if there is nothing to offer.</summary>
+        public bool OpenUnitMenu(Unit unit, Vector2 screen, IReadOnlyList<Unit> selected = null)
         {
             if (unit == null) return false;
             menu.Clear();
             menuUnits.Clear();
+            var villager = unit.Villager;
+            if (villager != null)
+            {
+                menu.Add(new MenuItem { Label = "Bio", Run = () => CharacterWindows.Ensure().ShowBio(villager) });
+                if (villager.Memory.manualHold || (villager.Brain != null && villager.Brain.Activity == Activity.PlayerOrder))
+                    menu.Add(new MenuItem { Label = "Resume routine", Run = () => { unit.Worker.ClearJobs(); villager.Brain?.ResumeRoutine(); } });
+                if (selected != null)
+                {
+                    var others = new List<Unit>();
+                    foreach (var u in selected) if (u != null && u != unit && !u.IsHidden) others.Add(u);
+                    // Priests heal the character
+                    var priests = others.FindAll(u => u.Villager != null && u.Villager.Role == VillagerRole.Priest && u.Villager.Stats.CanDo(StatType.Healing));
+                    if (priests.Count > 0 && villager.Needs.Health.current < villager.Needs.Health.max)
+                        menu.Add(new MenuItem { Label = "Heal (priest)", Run = () => { foreach (var p in priests) p.Worker.Assign(new PriestHealJob(villager)); } });
+                    // Developer mode: fights between characters, to try the combat stats
+                    var fighters = others.FindAll(AttackJob.CanAttack);
+                    if (GameModeManager.IsDeveloperMode && fighters.Count > 0)
+                        menu.Add(new MenuItem
+                        {
+                            Label = "Attack (Developer Mode)",
+                            Run = () => { foreach (var f in fighters) f.Worker.Assign(new AttackJob(new List<ICombatTarget> { villager })); },
+                        });
+                }
+            }
             if (unit.IsPerched && unit.Host is Building tower)
             {
                 menu.Add(new MenuItem { Label = "Come down from tower", Run = () => tower.ComeDown() });
@@ -441,6 +551,83 @@ namespace KingOfNothing.Interaction
             menu.Add(new MenuItem { Label = "Cancel" });
             BeginMenu(unit.Villager != null ? unit.Villager.DisplayName : unit.name, screen);
             return true;
+        }
+
+        // ------------------------------------------------------------------ sheep menu
+
+        /// <summary>Right click on a sheep: hunt, attack, mark for hunting, herd.</summary>
+        public void OpenSheepMenu(Sheep sheep, Vector2 screen, IReadOnlyList<Unit> units)
+        {
+            if (sheep == null) return;
+            menu.Clear();
+            menuUnits.Clear();
+            foreach (var u in units) if (u != null && !u.IsHidden) menuUnits.Add(u);
+            var hunters = menuUnits.FindAll(u => IsWorker(u) && u.Villager != null && u.Villager.Stats.CanDo(StatType.Hunting));
+            var fighters = menuUnits.FindAll(u => IsSoldier(u) && AttackJob.CanAttack(u));
+            string why = menuUnits.Count > 0 && hunters.Count == 0 ? " - hunters only (hunting 0)" : menuUnits.Count == 0 ? " (select characters)" : "";
+            menu.Add(new MenuItem
+            {
+                Label = "Hunt" + why,
+                Enabled = hunters.Count > 0,
+                Run = () => { foreach (var h in hunters) h.Worker.Assign(new AttackJob(new List<ICombatTarget> { sheep })); },
+            });
+            if (fighters.Count > 0)
+                menu.Add(new MenuItem { Label = "Attack", Run = () => { foreach (var f in fighters) f.Worker.Assign(new AttackJob(new List<ICombatTarget> { sheep })); } });
+            menu.Add(new MenuItem
+            {
+                Label = sheep.MarkedForHunt ? "Unmark (no hunting)" : "Mark for hunting (hunters go on their own)",
+                Run = () => sheep.SetMarked(!sheep.MarkedForHunt),
+            });
+            var shepherds = hunters.FindAll(u => u.Villager.Stats.Has(StatType.Hunting, 5));
+            if (shepherds.Count > 0)
+                menu.Add(new MenuItem
+                {
+                    Label = "Herd to... (click the spot)",
+                    Run = () =>
+                    {
+                        herdSheep = sheep;
+                        herdShepherd = PickWorker(shepherds, sheep.transform.position);
+                        herding = true;
+                    },
+                });
+            else if (hunters.Count > 0)
+                menu.Add(new MenuItem { Label = "Herd (needs Shepherd, hunting 5)", Enabled = false });
+            menu.Add(new MenuItem { Label = "Cancel" });
+            BeginMenu(sheep.DisplayName, screen);
+        }
+
+        bool herding;
+        Sheep herdSheep;
+        Unit herdShepherd;
+
+        // ------------------------------------------------------------------ designations
+
+        /// <summary>Mark / unmark the objects for chopping, mining, harvesting (works without selected characters).</summary>
+        void AddDesignationEntries(List<WorldObject> group)
+        {
+            var marked = new List<WorldObject>();
+            var unmarked = new List<WorldObject>();
+            DesignationType kind = DesignationType.None;
+            foreach (var o in group)
+            {
+                var type = Designations.For(o);
+                if (type == DesignationType.None) continue;
+                if (kind == DesignationType.None) kind = type;
+                if (Designations.IsMarked(o)) marked.Add(o);
+                else unmarked.Add(o);
+            }
+            if (unmarked.Count > 0)
+                menu.Add(new MenuItem
+                {
+                    Label = unmarked.Count == 1 ? $"Mark for {Designations.Verb(Designations.For(unmarked[0]))}" : $"Mark for work ({unmarked.Count})",
+                    Run = () => { foreach (var o in unmarked) Designations.Mark(o); },
+                });
+            if (marked.Count > 0)
+                menu.Add(new MenuItem
+                {
+                    Label = marked.Count == 1 ? "Unmark" : $"Unmark ({marked.Count})",
+                    Run = () => { foreach (var o in marked) Designations.Unmark(o); },
+                });
         }
 
         static string VerbFor(ResourceNode node)
@@ -467,6 +654,11 @@ namespace KingOfNothing.Interaction
 
         void OnGUI()
         {
+            if (herding)
+            {
+                var hint = new Rect(Screen.width * 0.5f - 200f, 50f, 400f, 26f);
+                GUI.Box(hint, "Click where the sheep should go (right click / Esc: cancel)");
+            }
             if (!menuOpen) return;
             var e = Event.current;
             if (e.type == EventType.MouseDown && !menuRect.Contains(e.mousePosition))
@@ -532,7 +724,7 @@ namespace KingOfNothing.Interaction
             targets.RemoveAll(t => t == null || !t.CanBeHit);
             if (units.Count == 0 || targets.Count == 0) return;
             foreach (var u in units) u.Worker.Assign(new AttackJob(new List<ResourceNode>(targets)));
-            if (logActions) Debug.Log($"[Orders] {units.Count} soldier(s): attack {targets.Count} object(s)");
+            if (logActions) Debug.Log($"[Orders] {units.Count} character(s): attack {targets.Count} object(s)");
         }
 
         void AssignBuild(List<Unit> units, Building b, string verb)

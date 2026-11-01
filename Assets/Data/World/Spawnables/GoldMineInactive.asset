@@ -20,6 +20,7 @@ MonoBehaviour:
   animationFps: 10
   prefabOverride: {fileID: 0}
   visualScale: 1
+  tint: {r: 1, g: 1, b: 1, a: 1}
   footprint: {x: 3, y: 2}
   groundInset: 0.14
   blocksBuilding: 1
@@ -30,7 +31,7 @@ MonoBehaviour:
   fadeWhenHidingCharacter: 1
   movementConfigured: 1
   resourceType: 0
-  maxHealth: 2000
+  maxHealth: 400
   yieldAmount: 0
   drops: []
   stackSize: 1
@@ -39,6 +40,8 @@ MonoBehaviour:
   interactionTool: 0
   dataVersion: 2
   stump: {fileID: 0}
+  foodValue: 0
+  rawFood: 0
   buildingType: 8
   description: Villagers mine gold inside (it piles up at the entrance). Destroy
     breaks it; it can be repaired.
@@ -50,7 +53,7 @@ MonoBehaviour:
   - sprite: {fileID: 21300000, guid: 5a1fe87ade19b79479ef8c991d27bd21, type: 3}
     scale: 1
     groundInset: 0.2
-    belowHealth: 1000
+    belowHealth: 200
     repeatPerCell: 0
   destroyedStages:
   - sprite: {fileID: 21300000, guid: 5a1fe87ade19b79479ef8c991d27bd21, type: 3}
@@ -58,7 +61,7 @@ MonoBehaviour:
     groundInset: 0.2
     belowHealth: 2147483647
     repeatPerCell: 0
-  destroyedHealth: 1000
+  destroyedHealth: 200
   spawnDestroyed: 0
   activeSprite: {fileID: 21300000, guid: e0e37812bb65a664ba9d751b41c48b26, type: 3}
   tileStart: {fileID: 0}
@@ -81,7 +84,7 @@ MonoBehaviour:
   inventorySlots: 0
   slotCapacity: 100
   perchOffset: {x: 0, y: 2.3}
-  mannedHealthBonus: 500
+  mannedHealthBonus: 100
   archerRangeMultiplier: 2
   archeryBonusPerStep: 1
   archeryBonusMax: 5
@@ -90,7 +93,9 @@ MonoBehaviour:
   indulgenceCost: 10
   randomSkillCost: 1000
   unlocksPriest: 0
+  healAmount: 20
   allowsClassChange: 0
+  privateStorage: 0
   furnaceInputA: {fileID: 0}
   furnaceInputAAmount: 1
   furnaceInputB: {fileID: 0}
@@ -98,6 +103,7 @@ MonoBehaviour:
   furnaceOutput: {fileID: 0}
   furnaceOutputAmount: 1
   furnaceSeconds: 8
+  furnaceRecipes: []
   smokeFrames: []
   smokeHeight: 3
   smokeOffset: {x: 0.2, y: 1.4}
@@ -108,4 +114,4 @@ MonoBehaviour:
   mineOutput: {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
   mineInterval: 5
   mineReserve: 500
-  buildingDataVersion: 2
+  buildingDataVersion: 4

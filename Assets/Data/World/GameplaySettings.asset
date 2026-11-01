@@ -33,6 +33,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1b7dae601d2dce947b72dff25ab17ee8, type: 2}
   - {fileID: 11400000, guid: 64cbfdf0ba3778448b9b1bf67c8e3635, type: 2}
   - {fileID: 11400000, guid: 01d8ab900bd0c4d4391899771f423d96, type: 2}
+  - {fileID: 11400000, guid: c1ffdb9aea6b0df4185493308e15d11e, type: 2}
   placementValidTint: {r: 1, g: 1, b: 1, a: 0.6}
   placementInvalidTint: {r: 1, g: 0.35, b: 0.35, a: 0.6}
   underCharactersSortingOrder: -5
@@ -67,5 +68,7 @@ MonoBehaviour:
   missDistance: {x: 0.6, y: 1.6}
   stuckArrowSprite: {fileID: 1977285039, guid: 4763dc957a283c941af3311ed4cb97ef, type: 3}
   stuckArrowGameHours: 3
+  stats: {fileID: 11400000, guid: a264e5d573f016a4c94f715ebf4d043c, type: 2}
+  characters: {fileID: 11400000, guid: b4175b7ee7eb6174c9aba74cc8fc44d1, type: 2}
   pauseOnGameOver: 1
   dataVersion: 2

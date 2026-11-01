@@ -20,6 +20,7 @@ MonoBehaviour:
   animationFps: 10
   prefabOverride: {fileID: 0}
   visualScale: 1
+  tint: {r: 1, g: 1, b: 1, a: 1}
   footprint: {x: 2, y: 1}
   groundInset: 0.67
   blocksBuilding: 1
@@ -30,7 +31,7 @@ MonoBehaviour:
   fadeWhenHidingCharacter: 0
   movementConfigured: 1
   resourceType: 0
-  maxHealth: 1000
+  maxHealth: 200
   yieldAmount: 0
   drops: []
   stackSize: 1
@@ -39,9 +40,11 @@ MonoBehaviour:
   interactionTool: 0
   dataVersion: 2
   stump: {fileID: 0}
+  foodValue: 0
+  rawFood: 0
   buildingType: 7
-  description: Melts 1 gold with 3 wood into a gold coin. Placeholder art until the
-    furnace asset exists.
+  description: A baker melts gold with wood into gold coins and cooks raw meat. Placeholder
+    art.
   menuIcon: {fileID: 0}
   finishedScale: 0.5
   centerOnFootprint: 0
@@ -50,7 +53,7 @@ MonoBehaviour:
   - sprite: {fileID: 21300000, guid: eb8c7738ea36dbd48bc4304fd2ae479b, type: 3}
     scale: 0.75
     groundInset: 0.125
-    belowHealth: 300
+    belowHealth: 60
     repeatPerCell: 0
   destroyedStages:
   - sprite: {fileID: 21300000, guid: 65a74e59b4e920843bd373807cf0be98, type: 3}
@@ -58,7 +61,7 @@ MonoBehaviour:
     groundInset: 0.41
     belowHealth: 2147483647
     repeatPerCell: 0
-  destroyedHealth: 300
+  destroyedHealth: 60
   spawnDestroyed: 0
   activeSprite: {fileID: 0}
   tileStart: {fileID: 0}
@@ -78,10 +81,10 @@ MonoBehaviour:
   soldiersCanEnter: 1
   priestsCanEnter: 1
   doorOffset: {x: 0, y: -0.35}
-  inventorySlots: 3
+  inventorySlots: 6
   slotCapacity: 30
   perchOffset: {x: 0, y: 2.3}
-  mannedHealthBonus: 500
+  mannedHealthBonus: 100
   archerRangeMultiplier: 2
   archeryBonusPerStep: 1
   archeryBonusMax: 5
@@ -90,7 +93,9 @@ MonoBehaviour:
   indulgenceCost: 10
   randomSkillCost: 1000
   unlocksPriest: 0
+  healAmount: 20
   allowsClassChange: 0
+  privateStorage: 0
   furnaceInputA: {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
   furnaceInputAAmount: 1
   furnaceInputB: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
@@ -98,6 +103,31 @@ MonoBehaviour:
   furnaceOutput: {fileID: 11400000, guid: 6669335e14754394cb37c774b5981891, type: 2}
   furnaceOutputAmount: 1
   furnaceSeconds: 8
+  furnaceRecipes:
+  - name: Gold coin
+    inputs:
+    - item: {fileID: 11400000, guid: 2c1ee34b62ec06a4b8af6848d378f072, type: 2}
+      amount: 1
+      chance: 1
+    - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+      amount: 3
+      chance: 1
+    output: {fileID: 11400000, guid: 6669335e14754394cb37c774b5981891, type: 2}
+    outputAmount: 1
+    seconds: 8
+    cooking: 0
+  - name: Cooked meat
+    inputs:
+    - item: {fileID: 11400000, guid: 38a864700ff49d443b840f67fbc33d83, type: 2}
+      amount: 1
+      chance: 1
+    - item: {fileID: 11400000, guid: 84b4c11467022ff4896d4d95d158e3b3, type: 2}
+      amount: 1
+      chance: 1
+    output: {fileID: 11400000, guid: 1ac632fa3ec2b0a45b68872ffb6d0fbd, type: 2}
+    outputAmount: 1
+    seconds: 6
+    cooking: 1
   smokeFrames:
   - {fileID: -3938067102993155475, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
   - {fileID: -2814413885907626888, guid: dc61687b6a5c544dd919bee8fb6648ab, type: 3}
@@ -116,4 +146,4 @@ MonoBehaviour:
   mineOutput: {fileID: 0}
   mineInterval: 5
   mineReserve: 500
-  buildingDataVersion: 2
+  buildingDataVersion: 4

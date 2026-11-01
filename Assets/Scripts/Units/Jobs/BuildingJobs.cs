@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using KingOfNothing.Characters;
 using KingOfNothing.World;
 using KingOfNothing.World.Buildings;
 using KingOfNothing.World.Objects;
@@ -8,7 +9,9 @@ namespace KingOfNothing.Units
 {
     /// <summary>
     /// Build or repair a building: walk to a spot beside it and hammer (Pawn_Interact Hammer, the constructing
-    /// animation) until it has full health. Every swing adds GameplaySettings.buildPowerPerHit health.
+    /// animation) until it has full health. Every swing adds the builder's building level as health (stat table);
+    /// Master Hand (10) works twice as fast with critical swings, a Foreman (15) on the site makes the others 25%
+    /// faster. Every swing gives experience, the builders get a bonus when the building is finished.
     /// </summary>
     public sealed class BuildJob : UnitJob
     {
@@ -16,8 +19,10 @@ namespace KingOfNothing.Units
         readonly Approach approach = new Approach();
         float swingTime;
         bool swinging, impactDone;
+        bool startedAsSite;
 
         public BuildJob(Building target) => this.target = target;
+        public override object TargetObject => target;
 
         public override string Label => $"{(target != null && target.IsComplete ? "Repair" : "Build")} {(target != null ? target.DisplayName : "?")}";
         public Building Target => target;
@@ -26,12 +31,31 @@ namespace KingOfNothing.Units
         {
             approach.Reset();
             swinging = false;
+            startedAsSite = target != null && !target.IsComplete;
             unit.SetWorkAnimation(InteractionTool.Hammer, false);
+        }
+
+        /// <summary>Foreman (Building 15) of another builder on the same site: +25% speed for the others.</summary>
+        static float ForemanBonus(Unit unit, Building site)
+        {
+            foreach (var other in Unit.All)
+            {
+                if (other == null || other == unit || other.Worker == null || !(other.Worker.Current is BuildJob job) || job.Target != site) continue;
+                var v = other.Villager;
+                if (v != null && v.Stats.Has(StatType.Building, 15)) return StatSettings.Current.foremanSpeedBonus;
+            }
+            return 0f;
         }
 
         public override JobState Tick(Unit unit, float deltaTime)
         {
             if (target == null || target.IsDepleted) return JobState.Failed;
+            var villager = unit.Villager;
+            if (villager != null && !villager.Stats.CanDo(StatType.Building))
+            {
+                Debug.Log($"[Buildings] {villager.DisplayName} cannot build (building 0).", unit);
+                return JobState.Failed;
+            }
             if (!target.NeedsWork) return Finish(unit);
             if (!target.MaterialsComplete)
             {
@@ -52,7 +76,8 @@ namespace KingOfNothing.Units
             var map = MapData.Instance;
             var gameplay = map != null ? map.Gameplay : GameplaySettings.Fallback;
             var interaction = map != null ? map.Interaction : InteractionSettings.Fallback;
-            float interval = gameplay.buildInterval;
+            float speed = StatEffects.BuildSpeed(villager) * (1f + ForemanBonus(unit, target)) * (villager != null ? villager.WorkSpeedMultiplier : 1f);
+            float interval = gameplay.buildInterval / Mathf.Max(0.1f, speed);
             unit.SetWorkAnimation(InteractionTool.Hammer, true);
             unit.Face(box.center - (Vector2)unit.transform.position);
             if (!swinging)
@@ -66,7 +91,10 @@ namespace KingOfNothing.Units
             if (!impactDone && swingTime >= interval * interaction.hitImpactPoint)
             {
                 impactDone = true;
-                target.Build(gameplay.buildPowerPerHit);
+                int power = StatEffects.BuildPower(villager);
+                if (villager != null && Random.value < StatEffects.BuildCritChance(villager)) power *= 2;
+                target.Build(power, villager);
+                if (villager != null) villager.GainXp(StatType.Building, StatSettings.Current.buildHitXp);
             }
             if (swingTime >= interval) swinging = false;
             return target.NeedsWork ? JobState.Running : Finish(unit);
@@ -76,6 +104,10 @@ namespace KingOfNothing.Units
         {
             Approach.Release(unit);
             unit.SetWorkAnimation(InteractionTool.Hammer, false);
+            // The builders of a new building get a bonus when it is finished
+            if (startedAsSite && target != null && target.IsComplete && unit.Villager != null)
+                unit.Villager.GainXp(StatType.Building, StatSettings.Current.buildCompleteXp);
+            startedAsSite = false;
             return JobState.Done;
         }
 
@@ -135,6 +167,7 @@ namespace KingOfNothing.Units
         readonly Approach approach = new Approach();
 
         public CarryLootJob(WorldObject pile) => this.pile = pile;
+        public override object TargetObject => pile;
 
         public override string Label => $"Carry loot {(pile != null ? pile.DisplayName : "?")}";
         public override bool KeepsLoot => true;
@@ -171,7 +204,8 @@ namespace KingOfNothing.Units
         /// </summary>
         static void Merge(Unit unit, WorldObject held, WorldObject pile)
         {
-            int stack = pile.Definition != null ? pile.Definition.StackSize : 10;
+            int stack = (pile.Definition != null ? pile.Definition.StackSize : 10) +
+                        StatEffects.CarryBonus(unit.Villager, StockLootJob.StoredItemOf(pile.Definition), unit.Worker != null && unit.Worker.Current is SupplyJob);
             int total = held.Amount + pile.Amount;
             int carried = Mathf.Min(total, Mathf.Max(stack, held.Amount));
             int left = total - carried;
@@ -224,8 +258,10 @@ namespace KingOfNothing.Units
             Approach.Release(unit);
 
             int amount = pile.Amount;
-            int added = target.Stock(item, amount);
+            int added = target.Stock(item, amount, unit.Villager);
             if (added <= 0) return JobState.Failed;
+            // Efficiency: every delivered item teaches a little
+            if (unit.Villager != null) unit.Villager.GainXp(StatType.Efficiency, StatSettings.Current.deliveredItemXp * added);
             // Put the pile on the map first, so taking it away is recorded like every other change
             var released = unit.Carrier.Release();
             LootCarrier.PutDownNear(released, unit.transform.position);
@@ -275,7 +311,8 @@ namespace KingOfNothing.Units
             if (map.IsAreaBlocked(new RectInt(cell, item.Footprint)) &&
                 !ItemDropper.FindFreeCell(map, new RectInt(cell, item.Footprint), Mathf.Max(1, map.Interaction.dropFallbackRadius), out cell))
                 return JobState.Failed;
-            int taken = target.Withdraw(item, maxAmount > 0 ? Mathf.Min(maxAmount, item.StackSize) : item.StackSize);
+            int stack = item.StackSize + StatEffects.CarryBonus(unit.Villager, item, unit.Worker != null && unit.Worker.Current is SupplyJob);
+            int taken = target.Withdraw(item, maxAmount > 0 ? Mathf.Min(maxAmount, stack) : stack);
             if (taken <= 0) return JobState.Failed;
             var pile = WorldObjectFactory.Create(item, cell, Vector2.zero, target.transform.parent, map, configure: o => o.Amount = taken);
             if (pile == null) return JobState.Failed;
@@ -301,6 +338,7 @@ namespace KingOfNothing.Units
         static readonly List<WorldObject> Nearby = new List<WorldObject>();
 
         public SupplyJob(Building site) => this.site = site;
+        public override object TargetObject => site;
 
         public override string Label => $"Supply {(site != null ? site.Definition?.DisplayName : "?")} ({(site != null ? site.MaterialsText() : "")})";
         public override bool KeepsLoot => true;
@@ -367,7 +405,7 @@ namespace KingOfNothing.Units
                 // Stores
                 foreach (var b in Building.All)
                 {
-                    if (b == null || b == site || !b.IsUsable || b.Info == null || !b.Info.HasInventory || b.Info.IsFurnace) continue;
+                    if (b == null || b == site || !b.IsPublicStore) continue;
                     if (b.Inventory.Count(need.item) <= 0) continue;
                     float d = Vector2.Distance(from, b.GroundPoint);
                     if (d < bestDistance)

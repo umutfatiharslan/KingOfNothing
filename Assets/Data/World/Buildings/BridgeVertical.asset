@@ -20,6 +20,7 @@ MonoBehaviour:
   animationFps: 10
   prefabOverride: {fileID: 0}
   visualScale: 1
+  tint: {r: 1, g: 1, b: 1, a: 1}
   footprint: {x: 1, y: 3}
   groundInset: 0
   blocksBuilding: 1
@@ -30,7 +31,7 @@ MonoBehaviour:
   fadeWhenHidingCharacter: 0
   movementConfigured: 1
   resourceType: 0
-  maxHealth: 2000
+  maxHealth: 400
   yieldAmount: 0
   drops: []
   stackSize: 1
@@ -39,6 +40,8 @@ MonoBehaviour:
   interactionTool: 0
   dataVersion: 2
   stump: {fileID: 0}
+  foodValue: 0
+  rawFood: 0
   buildingType: 6
   description: Makes water walkable. Joins other bridges end to end. Three building
     / destroyed stages of 500 health.
@@ -50,35 +53,35 @@ MonoBehaviour:
   - sprite: {fileID: 537900410, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
     scale: 1
     groundInset: 0
-    belowHealth: 500
+    belowHealth: 100
     repeatPerCell: 1
   - sprite: {fileID: -1186231441, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
     scale: 1
     groundInset: 0
-    belowHealth: 1000
+    belowHealth: 200
     repeatPerCell: 1
   - sprite: {fileID: -1273934610, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
     scale: 1
     groundInset: 0
-    belowHealth: 1500
+    belowHealth: 300
     repeatPerCell: 1
   destroyedStages:
   - sprite: {fileID: 537900410, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
     scale: 1
     groundInset: 0
-    belowHealth: 500
+    belowHealth: 100
     repeatPerCell: 1
   - sprite: {fileID: -1186231441, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
     scale: 1
     groundInset: 0
-    belowHealth: 1000
+    belowHealth: 200
     repeatPerCell: 1
   - sprite: {fileID: -1273934610, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
     scale: 1
     groundInset: 0
-    belowHealth: 1500
+    belowHealth: 300
     repeatPerCell: 1
-  destroyedHealth: 1500
+  destroyedHealth: 300
   spawnDestroyed: 0
   activeSprite: {fileID: 0}
   tileStart: {fileID: -974526559, guid: df29ec13a8374d543bef09c5bc411ea5, type: 3}
@@ -98,7 +101,7 @@ MonoBehaviour:
   inventorySlots: 0
   slotCapacity: 100
   perchOffset: {x: 0, y: 2.3}
-  mannedHealthBonus: 500
+  mannedHealthBonus: 100
   archerRangeMultiplier: 2
   archeryBonusPerStep: 1
   archeryBonusMax: 5
@@ -107,7 +110,9 @@ MonoBehaviour:
   indulgenceCost: 10
   randomSkillCost: 1000
   unlocksPriest: 0
+  healAmount: 20
   allowsClassChange: 0
+  privateStorage: 0
   furnaceInputA: {fileID: 0}
   furnaceInputAAmount: 1
   furnaceInputB: {fileID: 0}
@@ -115,6 +120,7 @@ MonoBehaviour:
   furnaceOutput: {fileID: 0}
   furnaceOutputAmount: 1
   furnaceSeconds: 8
+  furnaceRecipes: []
   smokeFrames: []
   smokeHeight: 3
   smokeOffset: {x: 0.2, y: 1.4}
@@ -125,4 +131,4 @@ MonoBehaviour:
   mineOutput: {fileID: 0}
   mineInterval: 5
   mineReserve: 500
-  buildingDataVersion: 2
+  buildingDataVersion: 4

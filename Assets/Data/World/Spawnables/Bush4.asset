@@ -27,6 +27,7 @@ MonoBehaviour:
   animationFps: 10
   prefabOverride: {fileID: 0}
   visualScale: 1
+  tint: {r: 1, g: 1, b: 1, a: 1}
   footprint: {x: 1, y: 1}
   groundInset: 0.3
   blocksBuilding: 0
@@ -39,10 +40,15 @@ MonoBehaviour:
   resourceType: 0
   maxHealth: 8
   yieldAmount: 0
-  drops: []
+  drops:
+  - item: {fileID: 11400000, guid: 787916a446844144296f7ba7c63444f4, type: 2}
+    amount: 1
+    chance: 1
   stackSize: 10
   damagedFrames: []
   movableByCharacters: 0
   interactionTool: 0
   dataVersion: 2
   stump: {fileID: 0}
+  foodValue: 0
+  rawFood: 0

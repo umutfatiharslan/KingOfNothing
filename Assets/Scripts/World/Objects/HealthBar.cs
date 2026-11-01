@@ -2,6 +2,17 @@ using UnityEngine;
 
 namespace KingOfNothing.World.Objects
 {
+    /// <summary>A living thing with a health bar (characters, animals).</summary>
+    public interface IHealthDisplay
+    {
+        float CurrentHealth { get; }
+        float MaximumHealth { get; }
+        /// <summary>World point the bar is drawn at.</summary>
+        Vector3 BarAnchor { get; }
+        /// <summary>No bar while hidden (inside a building).</summary>
+        bool BarHidden { get; }
+    }
+
     /// <summary>
     /// Small health bar (SmallBar_Base + SmallBar_Fill) above an object. It appears when the object is hit, stays
     /// for a few seconds after the last hit and then fades out (InteractionSettings: 3 s + 1 s), and it stays while
@@ -19,6 +30,7 @@ namespace KingOfNothing.World.Objects
         const int SortingOrder = short.MaxValue - 30;
 
         ResourceNode node;
+        IHealthDisplay creature;
         Transform root;
         SpriteRenderer baseRenderer, fillRenderer;
         float lastHitTime = -999f;
@@ -45,6 +57,24 @@ namespace KingOfNothing.World.Objects
             if (bar != null) bar.pinCount = Mathf.Max(0, bar.pinCount - 1);
         }
 
+        /// <summary>Shows the bar of a character / an animal after a hit or a heal.</summary>
+        public static void NotifyUnit(IHealthDisplay target)
+        {
+            var c = target as Component;
+            if (c == null || !Application.isPlaying) return;
+            var bar = c.GetComponent<HealthBar>();
+            if (bar == null)
+            {
+                bar = c.gameObject.AddComponent<HealthBar>();
+                if (!bar.Build(null, target))
+                {
+                    Destroy(bar);
+                    return;
+                }
+            }
+            bar.lastHitTime = Time.time;
+        }
+
         static HealthBar Get(ResourceNode target)
         {
             if (target == null || target.IsCollectable || !Application.isPlaying) return null;
@@ -52,7 +82,7 @@ namespace KingOfNothing.World.Objects
             if (bar == null)
             {
                 bar = target.gameObject.AddComponent<HealthBar>();
-                if (!bar.Build(target))
+                if (!bar.Build(target, null))
                 {
                     Destroy(bar);
                     return null;
@@ -61,13 +91,14 @@ namespace KingOfNothing.World.Objects
             return bar;
         }
 
-        bool Build(ResourceNode target)
+        bool Build(ResourceNode target, IHealthDisplay living)
         {
             node = target;
+            creature = living;
             var settings = Settings;
             if (settings.healthBarBase == null) return false;
 
-            _ = target.Renderers; // cache the object's own renderers before adding ours
+            if (target != null) _ = target.Renderers; // cache the object's own renderers before adding ours
             root = new GameObject("Health Bar").transform;
             root.SetParent(transform, false);
             baseRenderer = new GameObject("Base", typeof(SpriteEffectMarker)).AddComponent<SpriteRenderer>();
@@ -106,7 +137,7 @@ namespace KingOfNothing.World.Objects
 
         void LateUpdate()
         {
-            if (node == null || root == null)
+            if ((node == null && (creature == null || (creature as Component) == null)) || root == null)
             {
                 Destroy(this);
                 return;
@@ -131,11 +162,21 @@ namespace KingOfNothing.World.Objects
         void Refresh(float alpha)
         {
             var settings = Settings;
-            float share = node.MaxHealth > 0 ? Mathf.Clamp01(node.Health / (float)node.MaxHealth) : 0f;
+            float share;
+            if (node != null) share = node.MaxHealth > 0 ? Mathf.Clamp01(node.Health / (float)node.MaxHealth) : 0f;
+            else share = creature.MaximumHealth > 0f ? Mathf.Clamp01(creature.CurrentHealth / creature.MaximumHealth) : 0f;
 
             // Position above the visible top, independent of the object's own scale / shake
-            var top = SpriteEffects.VisibleTopCenter(node);
-            root.position = new Vector3(top.x, top.y + settings.healthBarOffset, 0f);
+            if (node != null)
+            {
+                var top = SpriteEffects.VisibleTopCenter(node);
+                root.position = new Vector3(top.x, top.y + settings.healthBarOffset, 0f);
+            }
+            else
+            {
+                root.position = creature.BarAnchor;
+                if (creature.BarHidden) alpha = 0f;
+            }
             float scale = settings.healthBarScale;
             var parentScale = transform.lossyScale;
             root.localScale = new Vector3(scale / Mathf.Max(0.0001f, parentScale.x), scale / Mathf.Max(0.0001f, parentScale.y), 1f);

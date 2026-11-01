@@ -67,6 +67,7 @@ namespace KingOfNothing.World.Objects
                 var renderer = go.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
                 renderer.sortingOrder = MapSorting.Order(baseX, baseY);
+                renderer.color = definition.Tint;
 
                 if (definition.Animate && frames.Length > 1)
                 {

@@ -16,6 +16,8 @@ namespace KingOfNothing.Units
             this.verb = verb;
         }
 
+        public override object TargetObject => currentTarget;
+
         public override string Label => $"{verb} ({group.Remaining} left{(group.Together ? ", together" : "")})";
 
         public override JobState Tick(Unit unit, float deltaTime)

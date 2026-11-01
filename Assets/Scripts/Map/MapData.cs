@@ -81,6 +81,8 @@ namespace KingOfNothing.World
             {
 #if UNITY_EDITOR
                 if (gameplay == null) gameplay = GameplaySettings.LoadOrCreateDefault();
+                if (gameplay != null && gameplay.stats == null) gameplay.stats = KingOfNothing.Characters.StatSettings.LoadOrCreateDefault();
+                if (gameplay != null && gameplay.characters == null) gameplay.characters = KingOfNothing.Characters.CharacterSettings.LoadOrCreateDefault();
 #endif
                 return gameplay != null ? gameplay : GameplaySettings.Fallback;
             }

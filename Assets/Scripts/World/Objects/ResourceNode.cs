@@ -10,7 +10,7 @@ namespace KingOfNothing.World.Objects
     /// Objects with health -1 cannot be hit: they are collected directly (inventory comes later).
     /// It shakes on every hit and can switch to other frames after the first hit (gold loses its highlight).
     /// </summary>
-    public class ResourceNode : WorldObject, IDamageable
+    public class ResourceNode : WorldObject, IDamageable, KingOfNothing.Units.ICombatTarget
     {
         [Header("Resource")]
         [SerializeField] ResourceType resourceType = ResourceType.None;
@@ -21,6 +21,8 @@ namespace KingOfNothing.World.Objects
 
         /// <summary>Raised for every resource node when it is depleted: (node, resource, amount).</summary>
         public static event Action<ResourceNode, ResourceType, int> AnyDepleted;
+        /// <summary>Raised when a node is depleted by a hit: (node, who hit it last; null = developer / the world).</summary>
+        public static event Action<ResourceNode, GameObject> AnyDepletedBy;
         /// <summary>Raised for every health change of any node: (node, health before, health after).</summary>
         public static event Action<ResourceNode, int, int> AnyHealthChanged;
 
@@ -37,6 +39,25 @@ namespace KingOfNothing.World.Objects
         /// <summary>Health -1 in the asset: picked up directly, never hit.</summary>
         public bool IsCollectable => collectable;
         public virtual bool CanBeHit => !collectable && !IsDepleted;
+
+        // ------------------------------------------------------------------ combat target
+
+        public bool IsAlive => this != null && CanBeHit;
+        public virtual KingOfNothing.Units.TargetKind TargetKind => KingOfNothing.Units.TargetKind.Object;
+        public bool Moves => false;
+
+        /// <summary>A weapon / tool hit (scarecrow training only shakes it).</summary>
+        public virtual int ReceiveHit(KingOfNothing.Units.HitInfo hit)
+        {
+            if (hit.Training)
+            {
+                HitShake.Play(this);
+                return 0;
+            }
+            int before = health;
+            ApplyHit(hit.Damage, hit.Attacker != null ? hit.Attacker.gameObject : null);
+            return before - health;
+        }
 
         public override void Initialize(SpawnableDefinition source, Vector2Int originCell, Vector2 cellOffset, MapData map)
         {
@@ -69,6 +90,7 @@ namespace KingOfNothing.World.Objects
         {
             Depleted?.Invoke(this);
             AnyDepleted?.Invoke(this, resourceType, yieldAmount);
+            AnyDepletedBy?.Invoke(this, instigator);
 
             // Remember everything before the object is gone, then let it go (trees leave their stump) and drop the items
             var definition = Definition;

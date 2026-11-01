@@ -46,7 +46,7 @@ namespace KingOfNothing.World.Objects
         {
             if (target == null) return;
             var settings = MapData.Instance != null ? MapData.Instance.Interaction : InteractionSettings.Fallback;
-            var tint = on ? settings.selectedTint : Color.white;
+            var tint = on ? settings.selectedTint : target.Definition != null ? target.Definition.Tint : Color.white;
             foreach (var r in target.Renderers)
             {
                 if (r == null) continue;

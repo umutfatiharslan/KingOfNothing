@@ -5,6 +5,7 @@ using KingOfNothing.Utilities;
 using KingOfNothing.World;
 using KingOfNothing.World.Buildings;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace KingOfNothing.Interaction
 {
@@ -95,6 +96,8 @@ namespace KingOfNothing.Interaction
                 GUILayout.Label(b.MineReserve >= 0 ? $"Gold left in the mine: {b.MineReserve}" : "Gold left in the mine: unlimited");
             var list = new List<Unit>(b.Occupants);
             if (b.Percher != null) list.Insert(0, b.Percher);
+            if (TrainingService.TrainsHere(b))
+                GUILayout.Label("Click Training... to train a stat (the character must be inside).");
             // Tall enough for every character with its own buttons (scrolls beyond ~4 characters)
             float rowHeight = b.Type == BuildingType.Church ? 118f : info != null && info.allowsClassChange ? 96f : 70f;
             charactersScroll = GUILayout.BeginScrollView(charactersScroll, GUILayout.Height(Mathf.Clamp(list.Count * rowHeight + 10f, 90f, 470f)));
@@ -112,12 +115,17 @@ namespace KingOfNothing.Interaction
                 {
                     using (new GUILayout.HorizontalScope())
                     {
-                        if (GUILayout.Button("Exit")) b.Release(unit);
-                        if (b.Type == BuildingType.School || b.Type == BuildingType.ArmyHouse)
+                        if (GUILayout.Button("Exit"))
                         {
-                            GUI.enabled = false;
-                            GUILayout.Button("Improve stat (needs stats)");
-                            GUI.enabled = true;
+                            b.Release(unit);
+                            villager?.Brain?.ResumeRoutine();
+                        }
+                        if (villager != null && GUILayout.Button("Bio")) CharacterWindows.Ensure().ShowBio(villager);
+                        if (villager != null && TrainingService.TrainsHere(b) && (b.Type != BuildingType.Church || role == VillagerRole.Priest))
+                        {
+                            var t = villager.Training;
+                            string label = t.active && t.buildingUid == b.Uid ? $"Training {StatInfo.Name(t.stat)}..." : "Training...";
+                            if (GUILayout.Button(label)) CharacterWindows.Ensure().ShowTraining(villager, b);
                         }
                     }
                     if (info != null && info.allowsClassChange && role != VillagerRole.Priest) DrawClassChange(villager, role);
@@ -161,8 +169,11 @@ namespace KingOfNothing.Interaction
                 GUILayout.Label("Class:", GUILayout.Width(40f));
                 foreach (var r in new[] { VillagerRole.Warrior, VillagerRole.Lancer, VillagerRole.Archer, VillagerRole.Villager })
                 {
-                    GUI.enabled = role != r;
-                    if (GUILayout.Button(r.ToString()))
+                    // A class needs its weapon stat (0 = can never use that weapon)
+                    var weapon = StatRoller.WeaponStat(r);
+                    bool possible = !weapon.HasValue || villager.Stats.CanDo(weapon.Value);
+                    GUI.enabled = role != r && possible;
+                    if (GUILayout.Button(new GUIContent(r.ToString(), possible ? null : $"{StatInfo.Name(weapon.Value)} 0: cannot use this weapon")))
                     {
                         villager.SetRole(r);
                         Say($"{villager.DisplayName} is now a {r}.");
@@ -179,14 +190,13 @@ namespace KingOfNothing.Interaction
             using (new GUILayout.HorizontalScope())
             {
                 bool hurt = villager != null && villager.Needs.Health.current < villager.Needs.Health.max;
-                GUI.enabled = villager != null && coin != null && hurt && coins >= info.healCost;
-                if (GUILayout.Button(hurt ? $"Heal ({info.healCost} coins)" : $"Heal ({info.healCost} coins) - healthy"))
+                bool healedToday = villager != null && villager.Memory.healedDay == GameClock.Today;
+                GUI.enabled = villager != null && coin != null && hurt && !healedToday && coins >= info.healCost;
+                string healLabel = $"Heal +{info.healAmount} ({info.healCost} coins)" + (!hurt ? " - healthy" : healedToday ? " - once a day" : "");
+                if (GUILayout.Button(healLabel))
                 {
-                    if (Building.SpendFromTreasury(coin, info.healCost))
-                    {
-                        villager.Needs.Health.Change(villager.Needs.Health.max);
-                        Say($"{villager.DisplayName} was healed.");
-                    }
+                    if (b.TryChurchHeal(villager, out string reason)) Say($"{villager.DisplayName} was healed.");
+                    else Say(reason);
                 }
                 GUI.enabled = false;
                 GUILayout.Button($"Pay indulgence ({info.indulgenceCost} coins)");
@@ -194,9 +204,9 @@ namespace KingOfNothing.Interaction
             }
             using (new GUILayout.HorizontalScope())
             {
-                GUI.enabled = false;
-                if (role == VillagerRole.Priest) GUILayout.Button("Skill development (needs stats)");
-                GUILayout.Button($"Random skill +1 ({info.randomSkillCost} coins)");
+                GUI.enabled = villager != null && coin != null && coins >= info.randomSkillCost;
+                if (GUILayout.Button($"Random skill +1 ({info.randomSkillCost} coins)") && RandomSkill(villager, coin, info.randomSkillCost, out string what))
+                    Say($"{villager.DisplayName}: {what}");
                 GUI.enabled = true;
                 if (info.unlocksPriest && role != VillagerRole.Priest && villager != null && GUILayout.Button("Become priest"))
                 {
@@ -204,6 +214,21 @@ namespace KingOfNothing.Interaction
                     Say($"{villager.DisplayName} is now a priest.");
                 }
             }
+        }
+
+        /// <summary>Church: a random stat (that can still grow) gets a level for gold coins.</summary>
+        static bool RandomSkill(Villager v, SpawnableDefinition coin, int cost, out string what)
+        {
+            what = null;
+            var candidates = new List<StatType>();
+            foreach (var s in StatInfo.All)
+                if (v.Stats.CanDo(s) && v.Stats.Base(s) < StatBlock.MaxLevel && s != StatType.Healing) candidates.Add(s);
+            if (candidates.Count == 0 || !Building.SpendFromTreasury(coin, cost)) return false;
+            var stat = candidates[Random.Range(0, candidates.Count)];
+            v.Stats.Set(stat, v.Stats.Base(stat) + 1);
+            what = $"{StatInfo.Name(stat)} +1 ({v.Stats.Base(stat)}).";
+            v.AddJournal($"Bought a blessing at the church: {what}");
+            return true;
         }
 
         // ------------------------------------------------------------------ inventory
@@ -216,11 +241,23 @@ namespace KingOfNothing.Interaction
             var inventory = b.Inventory;
             if (!b.IsUsable) GUILayout.Label(b.IsComplete ? "Destroyed: repair it to use the inventory." : "Only finished buildings store items.");
             GUILayout.Label($"Slots: {inventory.UsedSlots}/{inventory.SlotCount}, {inventory.SlotCapacity} per item");
+            if (info != null && info.privateStorage)
+            {
+                GUILayout.Label("Training storage: trainings here take their cost from it (not part of the kingdom's stores).");
+                foreach (var r in b.Requests)
+                    if (r != null && r.item != null) GUILayout.Label($"Requested from the haulers: {r.item.DisplayName} {r.count}");
+                if (b.Requests.Count > 0 && GUILayout.Button("Cancel the requests")) b.ClearRequests();
+            }
             if (info != null && info.IsFurnace)
             {
-                GUILayout.Label($"Melts {info.furnaceInputAAmount} {Name(info.furnaceInputA)} + {info.furnaceInputBAmount} {Name(info.furnaceInputB)} " +
-                                $"into {info.furnaceOutputAmount} {Name(info.furnaceOutput)} ({info.furnaceSeconds:0.#} s)");
-                GUILayout.Label(b.FurnaceWorking ? $"Working... {Mathf.RoundToInt(b.FurnaceProgress * 100f)}%" : "Idle (needs inputs / room for coins)");
+                foreach (var r in info.Recipes)
+                {
+                    var parts = new List<string>();
+                    foreach (var i in r.inputs) if (i != null && i.item != null) parts.Add($"{i.amount} {i.item.DisplayName}");
+                    GUILayout.Label($"{r.name}: {string.Join(" + ", parts)} -> {r.outputAmount} {Name(r.output)} ({r.seconds:0.#} s at baking 10)");
+                }
+                GUILayout.Label(b.FurnaceWorking ? $"A baker works it: {b.CurrentRecipe?.name} {Mathf.RoundToInt(b.FurnaceCycleProgress * 100f)}%"
+                                                 : "Idle: it only works with a baker (Work the furnace, or the Baking work type).");
             }
 
             var selection = SelectionManager.Instance != null ? SelectionManager.Instance.Selected : null;
@@ -232,8 +269,7 @@ namespace KingOfNothing.Interaction
                 if (slot == null || slot.item == null) continue;
                 using (new GUILayout.HorizontalScope())
                 {
-                    var icon = slot.item.PreviewSprite;
-                    if (icon != null) BuildMenuController.DrawSprite(GUILayoutUtility.GetRect(24f, 24f, GUILayout.Width(24f)), icon);
+                    BuildMenuController.DrawItem(GUILayoutUtility.GetRect(24f, 24f, GUILayout.Width(24f)), slot.item);
                     GUILayout.Label($"{slot.item.DisplayName}: {slot.count}/{inventory.SlotCapacity}");
                     GUI.enabled = hasUnits && b.IsUsable;
                     if (GUILayout.Button(new GUIContent("Take out", "A selected character carries it out as loot"), GUILayout.Width(80f)))

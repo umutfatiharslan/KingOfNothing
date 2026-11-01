@@ -51,9 +51,26 @@ namespace KingOfNothing.World.Buildings
         bool needsMaterials;
         readonly List<InventorySlot> supplied = new List<InventorySlot>();
         int mineReserve = -1;
-        float mineTimer;
+        readonly Dictionary<Unit, float> mineTimers = new Dictionary<Unit, float>();
         float furnaceProgress;
         bool furnaceWorking;
+        float furnaceOperatedUntil;
+        int furnaceRecipe = -1;
+        /// <summary>Best building level of the builders who worked on the site (Sturdy Foundation, slower decay).</summary>
+        int builderLevel;
+        /// <summary>Extra full health from Sturdy Foundation.</summary>
+        int foundationBonus;
+        float decayCarry;
+        /// <summary>Best efficiency level of the suppliers, Thrifty Master, and the material Master's Secret made free.</summary>
+        int supplierLevel;
+        bool thrifty;
+        string freeMaterial;
+        readonly List<string> suppliers = new List<string>();
+        /// <summary>Pickaxe Blow (Mining 20) on this building: hits so far and when they wear off (game hours).</summary>
+        int brokenHits;
+        float brokenUntil;
+        /// <summary>Items the training of a character waits for (haulers bring them).</summary>
+        readonly List<InventorySlot> requests = new List<InventorySlot>();
         SmokeEmitter smoke;
         bool lastWalkable;
         int lastHealth = int.MinValue;
@@ -99,7 +116,7 @@ namespace KingOfNothing.World.Buildings
             {
                 if (!RequiresMaterials) return true;
                 foreach (var c in Info.buildCost)
-                    if (c != null && c.item != null && Supplied(c.item) < c.amount) return false;
+                    if (c != null && c.item != null && Supplied(c.item) < Required(c.item)) return false;
                 return true;
             }
         }
@@ -113,13 +130,27 @@ namespace KingOfNothing.World.Buildings
             return 0;
         }
 
+        /// <summary>
+        /// How many of the item the template needs: the building cost minus the saving of its best supplier
+        /// (Efficiency: 1.5% per level, Thrifty Master -10%); the material made free by Master's Secret needs none.
+        /// </summary>
+        public int Required(SpawnableDefinition item)
+        {
+            if (Info == null || item == null) return 0;
+            if (!string.IsNullOrEmpty(freeMaterial) && item.name == freeMaterial) return 0;
+            int needed = 0;
+            foreach (var c in Info.buildCost) if (c != null && c.item == item) needed += c.amount;
+            if (needed <= 0) return 0;
+            var s = KingOfNothing.Characters.StatSettings.Current;
+            float saving = s.efficiencySavingPerLevel * supplierLevel + (thrifty ? s.discount10 : 0f);
+            return Mathf.Max(1, Mathf.CeilToInt(needed * (1f - Mathf.Clamp01(saving)) - 0.0001f));
+        }
+
         /// <summary>How many of the item are still missing (0 if it is not needed).</summary>
         public int Missing(SpawnableDefinition item)
         {
             if (!RequiresMaterials || item == null) return 0;
-            int needed = 0;
-            foreach (var c in Info.buildCost) if (c != null && c.item == item) needed += c.amount;
-            return Mathf.Max(0, needed - Supplied(item));
+            return Mathf.Max(0, Required(item) - Supplied(item));
         }
 
         /// <summary>Materials still missing (item, amount).</summary>
@@ -142,14 +173,29 @@ namespace KingOfNothing.World.Buildings
             if (!RequiresMaterials) return "";
             var parts = new List<string>();
             foreach (var c in Info.buildCost)
-                if (c != null && c.item != null && c.amount > 0) parts.Add($"{c.item.DisplayName} {Mathf.Min(Supplied(c.item), c.amount)}/{c.amount}");
+                if (c != null && c.item != null && c.amount > 0)
+                {
+                    int required = Required(c.item);
+                    parts.Add(required <= 0 ? $"{c.item.DisplayName} free" : $"{c.item.DisplayName} {Mathf.Min(Supplied(c.item), required)}/{required}");
+                }
             return string.Join(", ", parts);
         }
 
         /// <summary>Number of characters inside (or on top).</summary>
         public int OccupantCount => occupants.Count + (percher != null ? 1 : 0);
-        /// <summary>-1 = unlimited.</summary>
-        public int Capacity => Info == null ? 0 : Type == BuildingType.Tower ? 1 : Info.capacity;
+        /// <summary>-1 = unlimited. Mine Chief (Mining 10) inside a gold mine: one more miner.</summary>
+        public int Capacity => Info == null ? 0 : Type == BuildingType.Tower ? 1 : Info.capacity + MineCapacityBonus(null);
+
+        int MineCapacityBonus(Unit entering)
+        {
+            if (Info == null || !Info.IsMine || Info.capacity < 0) return 0;
+            bool chief = entering != null && HasMiningMilestone(entering, 10);
+            foreach (var u in occupants) if (HasMiningMilestone(u, 10)) chief = true;
+            return chief ? KingOfNothing.Characters.StatSettings.Current.mineCapacityBonus10 : 0;
+        }
+
+        static bool HasMiningMilestone(Unit u, int level) =>
+            u != null && u.Villager != null && u.Villager.Stats.Has(KingOfNothing.Characters.StatType.Mining, level);
 
         /// <summary>Area villagers work on (the whole footprint for bridges, otherwise the hitbox).</summary>
         public Rect WorkBox => Info != null && Info.isBridge ? new Rect(Cell.x, Cell.y, Footprint.x, Footprint.y) : Hitbox;
@@ -170,6 +216,29 @@ namespace KingOfNothing.World.Buildings
         }
 
         public override float BaseAlpha => IsTemplate ? Gameplay.templateAlpha : 1f;
+
+        public override TargetKind TargetKind => TargetKind.Building;
+
+        /// <summary>Weapon / tool hits: Pickaxe Blow makes the building take more from every following hit.</summary>
+        public override int ReceiveHit(HitInfo hit)
+        {
+            if (hit.Training || IsDepleted) return base.ReceiveHit(hit);
+            float now = GameClock.Now;
+            if (now > brokenUntil) brokenHits = 0;
+            var s = KingOfNothing.Characters.StatSettings.Current;
+            if (hit.ArmorBreak)
+            {
+                brokenHits = Mathf.Min(s.armorBreakMaxHits, brokenHits + 1);
+                brokenUntil = now + s.armorBreakHours;
+            }
+            if (brokenHits > 0) hit.Damage = Mathf.RoundToInt(hit.Damage * (1f + s.armorBreakBuildingBonus * brokenHits));
+            return base.ReceiveHit(hit);
+        }
+
+        /// <summary>Best building level of the builders of this building.</summary>
+        public int BuilderLevel => builderLevel;
+        /// <summary>Sturdy Foundation bonus health.</summary>
+        public int FoundationBonus => foundationBonus;
 
         // ------------------------------------------------------------------ setup
 
@@ -229,7 +298,7 @@ namespace KingOfNothing.World.Buildings
                 var info = Info;
                 if (info == null || Definition == null) return MaxHealth;
                 if (phase == BuildingPhase.Destroyed) return Mathf.Max(1, info.destroyedHealth);
-                return Definition.MaxHealth + (towerBonus ? info.mannedHealthBonus : 0);
+                return Definition.MaxHealth + foundationBonus + (towerBonus ? info.mannedHealthBonus : 0);
             }
         }
 
@@ -250,6 +319,12 @@ namespace KingOfNothing.World.Buildings
             public List<int> supplyCounts = new List<int>();
             public List<string> items = new List<string>(); // older files kept the inventory here
             public List<int> counts = new List<int>();
+            public int builderLevel;
+            public int foundationBonus;
+            public int supplierLevel;
+            public bool thrifty;
+            public string freeMaterial;
+            public List<string> suppliers = new List<string>();
         }
 
         /// <summary>Stored items (kept out of undo).</summary>
@@ -258,13 +333,20 @@ namespace KingOfNothing.World.Buildings
         {
             public List<string> items = new List<string>();
             public List<int> counts = new List<int>();
+            public List<string> requestItems = new List<string>();
+            public List<int> requestCounts = new List<int>();
         }
 
         public override string SaveState()
         {
             bool defaultPhase = phase == (Info != null && Info.spawnDestroyed ? BuildingPhase.Destroyed : BuildingPhase.Complete);
-            if (defaultPhase && mineReserve < 0 && !needsMaterials && supplied.Count == 0) return null;
-            var state = new SavedState { phase = (int)phase, complete = phase != BuildingPhase.Construction, reserve = mineReserve, needsMaterials = needsMaterials };
+            if (defaultPhase && mineReserve < 0 && !needsMaterials && supplied.Count == 0 && builderLevel == 0 && foundationBonus == 0) return null;
+            var state = new SavedState
+            {
+                phase = (int)phase, complete = phase != BuildingPhase.Construction, reserve = mineReserve, needsMaterials = needsMaterials,
+                builderLevel = builderLevel, foundationBonus = foundationBonus, supplierLevel = supplierLevel, thrifty = thrifty,
+                freeMaterial = freeMaterial, suppliers = new List<string>(suppliers),
+            };
             foreach (var x in supplied)
             {
                 if (x.item == null || x.count <= 0) continue;
@@ -288,6 +370,13 @@ namespace KingOfNothing.World.Buildings
             else phase = state.complete ? BuildingPhase.Complete : BuildingPhase.Construction;
             mineReserve = state != null ? state.reserve : -1;
             needsMaterials = state != null && state.needsMaterials;
+            builderLevel = state != null ? state.builderLevel : 0;
+            foundationBonus = state != null && phase != BuildingPhase.Construction ? state.foundationBonus : 0;
+            supplierLevel = state != null ? state.supplierLevel : 0;
+            thrifty = state != null && state.thrifty;
+            freeMaterial = state != null ? state.freeMaterial : null;
+            suppliers.Clear();
+            if (state != null && state.suppliers != null) suppliers.AddRange(state.suppliers);
             supplied.Clear();
             if (state != null && state.supplyItems != null)
                 for (int i = 0; i < state.supplyItems.Count && i < state.supplyCounts.Count; i++)
@@ -305,9 +394,15 @@ namespace KingOfNothing.World.Buildings
 
         public override string SaveKeptState()
         {
-            if (inventory.UsedSlots == 0) return null;
+            if (inventory.UsedSlots == 0 && requests.Count == 0) return null;
             var kept = new KeptState();
             inventory.Save(kept.items, kept.counts);
+            foreach (var r in requests)
+            {
+                if (r.item == null || r.count <= 0) continue;
+                kept.requestItems.Add(r.item.name);
+                kept.requestCounts.Add(r.count);
+            }
             return JsonUtility.ToJson(kept);
         }
 
@@ -318,6 +413,13 @@ namespace KingOfNothing.World.Buildings
             {
                 var kept = JsonUtility.FromJson<KeptState>(json);
                 inventory.Load(kept.items, kept.counts);
+                requests.Clear();
+                if (kept.requestItems != null)
+                    for (int i = 0; i < kept.requestItems.Count && i < kept.requestCounts.Count; i++)
+                    {
+                        var item = BuildingInventory.Resolver != null ? BuildingInventory.Resolver(kept.requestItems[i]) : null;
+                        if (item != null && kept.requestCounts[i] > 0) requests.Add(new InventorySlot { item = item, count = kept.requestCounts[i] });
+                    }
             }
             catch (Exception e) { Debug.LogWarning($"[Building] Could not read the stored items of {name}: {e.Message}", this); }
         }
@@ -331,16 +433,27 @@ namespace KingOfNothing.World.Buildings
         // ------------------------------------------------------------------ construction, repair, damage
 
         /// <summary>A villager's hammer swing: adds health (building or repairing). False if there is nothing to do.</summary>
-        public bool Build(int amount)
+        public bool Build(int amount, KingOfNothing.Characters.Villager builder = null)
         {
             if (IsDepleted || amount <= 0) return false;
             if (!MaterialsComplete) return false; // construction starts once every material has arrived
+            if (builder != null && phase == BuildingPhase.Construction)
+            {
+                // Sturdy Foundation: only the best builder of the site counts (a better one joining later replaces him)
+                int level = builder.Stats.Base(KingOfNothing.Characters.StatType.Building);
+                if (level > builderLevel)
+                {
+                    string before = SaveState();
+                    builderLevel = level;
+                    RaiseStateChanged(before);
+                }
+            }
             if (phase == BuildingPhase.Destroyed)
             {
                 SetHealth(Mathf.Min(MaxHealth, Health + amount));
                 HitShake.Play(this);
                 HealthBar.Notify(this);
-                if (Health >= MaxHealth) Restore();
+                if (Health >= MaxHealth) Restore(builder != null && builder.Stats.Has(KingOfNothing.Characters.StatType.Building, 15));
                 RefreshLook(false);
                 return true;
             }
@@ -363,22 +476,34 @@ namespace KingOfNothing.World.Buildings
             phase = BuildingPhase.Complete;
             needsMaterials = false;
             supplied.Clear();
+            // Sturdy Foundation (Building 5): extra health of the best builder, added after the construction
+            var s = KingOfNothing.Characters.StatSettings.Current;
+            foundationBonus = builderLevel >= 5 ? s.foundationHealthPerLevel * builderLevel : 0;
             RaiseStateChanged(before);
+            if (foundationBonus > 0)
+            {
+                ApplyPhaseMax(false, true);
+                SetHealth(MaxHealth);
+            }
             RefreshLook(true);
-            Debug.Log($"[Buildings] {DisplayName} is complete.", this);
+            Debug.Log($"[Buildings] {DisplayName} is complete" + (foundationBonus > 0 ? $" (+{foundationBonus} health from a sturdy foundation)." : "."), this);
             AnyChanged?.Invoke(this);
         }
 
-        /// <summary>The destroyed building is repaired: it comes back with 1 health and the repair goes on.</summary>
-        void Restore()
+        /// <summary>
+        /// The destroyed building is repaired: it comes back with 1 health (a Foreman, Building 15: 10% of its health)
+        /// and the repair goes on.
+        /// </summary>
+        void Restore(bool foreman = false)
         {
             string before = SaveState();
             phase = BuildingPhase.Complete;
             ApplyPhaseMax(false);
             RaiseStateChanged(before);
-            SetHealth(1);
+            int start = foreman ? Mathf.Max(1, Mathf.RoundToInt(MaxHealth * KingOfNothing.Characters.StatSettings.Current.foremanRestoreShare)) : 1;
+            SetHealth(start);
             RefreshLook(true);
-            Debug.Log($"[Buildings] {Definition?.DisplayName} stands again (1 health), keep repairing it.", this);
+            Debug.Log($"[Buildings] {Definition?.DisplayName} stands again ({start} health), keep repairing it.", this);
             AnyChanged?.Invoke(this);
         }
 
@@ -410,10 +535,17 @@ namespace KingOfNothing.World.Buildings
             {
                 var health = u != null && u.Villager != null ? u.Villager.Needs.Health : null;
                 if (health == null) continue;
+                // Escape (Walk speed 15): out of the door before it falls
+                if (KingOfNothing.Characters.CombatRules.DodgesCollapse(u.Villager))
+                {
+                    u.Villager.AddJournal($"Escaped from the collapsing {Definition?.DisplayName} unhurt.");
+                    continue;
+                }
                 // 1-25; a character who already has 25 or less always ends up lower than now (at least 1)
                 int now = Mathf.FloorToInt(health.current);
                 float wanted = now > 25 ? UnityEngine.Random.Range(1, 26) : now > 1 ? UnityEngine.Random.Range(1, now) : 1;
                 health.Change(wanted - health.current);
+                u.Villager.AddJournal($"Hurt in the collapse of {Definition?.DisplayName} ({Mathf.RoundToInt(health.current)} health left).");
                 Debug.Log($"[Buildings] {u.Villager.DisplayName} was hurt in the collapse ({Mathf.RoundToInt(health.current)} health).", u);
             }
         }
@@ -423,6 +555,20 @@ namespace KingOfNothing.World.Buildings
             base.ApplyHit(power, instigator);
             if (this == null || IsDepleted) return;
             RefreshLook(false);
+        }
+
+        /// <summary>
+        /// One game day passed: the daily decay, slower for buildings of good builders (x (1 - 2.5% x level)); the
+        /// fractions add up over the days.
+        /// </summary>
+        public void DailyDecay(int amount)
+        {
+            if (amount <= 0) return;
+            decayCarry += amount * KingOfNothing.Characters.StatEffects.DecayMultiplier(builderLevel);
+            int whole = Mathf.FloorToInt(decayCarry);
+            if (whole <= 0) return;
+            decayCarry -= whole;
+            Decay(whole);
         }
 
         /// <summary>Loses health by itself (one game day passed).</summary>
@@ -451,20 +597,30 @@ namespace KingOfNothing.World.Buildings
             bool built = phase != BuildingPhase.Construction;
             InjureOccupants();
             ReleaseAll();
-            // A construction site torn down leaves part of its materials on the ground
-            if (!built) DropSalvage();
+            // A construction site torn down leaves part of its materials on the ground (more with War Hammer / Recycling)
+            if (!built) DropSalvage(SalvageShareOf(instigator));
             Debug.Log($"[Buildings] {Definition?.DisplayName} is gone.", this);
             if (built) AnyFell?.Invoke(this);
             Remove();
         }
 
+        static float SalvageShareOf(GameObject instigator)
+        {
+            float share = Gameplay.constructionSalvageShare;
+            var v = instigator != null ? instigator.GetComponent<KingOfNothing.Characters.Villager>() : null;
+            if (v == null) return share;
+            var s = KingOfNothing.Characters.StatSettings.Current;
+            if (v.Stats.Has(KingOfNothing.Characters.StatType.Building, 20)) share = Mathf.Max(share, s.hammerSalvageShare);
+            if (v.Stats.Has(KingOfNothing.Characters.StatType.Efficiency, 15)) share = Mathf.Max(share, s.salvageShare15);
+            return share;
+        }
+
         /// <summary>Share of the building cost (GameplaySettings: 50%) as loot piles around the site.</summary>
-        void DropSalvage()
+        void DropSalvage(float share)
         {
             var info = Info;
             var map = MapData.Instance;
             if (info == null || map == null || info.buildCost == null) return;
-            float share = Gameplay.constructionSalvageShare;
             var drops = new List<DropEntry>();
             foreach (var c in info.buildCost)
             {
@@ -492,6 +648,31 @@ namespace KingOfNothing.World.Buildings
                 ItemDropper.Drop(drops, Area, transform.parent, map);
             }
             supplied.Clear();
+            ReleaseAll();
+            Remove();
+        }
+
+        /// <summary>Ruin Digger (Mining 5): only ruins (destroyed look) and never the castle.</summary>
+        public bool CanBeDug => phase == BuildingPhase.Destroyed && !IsDepleted && Info != null && !Info.gameOverWhenDestroyed;
+
+        /// <summary>
+        /// Digs the ruin (Ruin Digger): every pickaxe hit takes away destroyed health; when it is gone, 25% of the
+        /// building cost lies on the ground and the ruin is gone for good (it cannot be repaired any more).
+        /// </summary>
+        public void Dig(int power, GameObject digger)
+        {
+            if (!CanBeDug || power <= 0) return;
+            int left = Health - power;
+            HitShake.Play(this);
+            HealthBar.Notify(this);
+            if (left > 0)
+            {
+                SetHealth(left);
+                RefreshLook(false);
+                return;
+            }
+            DropSalvage(KingOfNothing.Characters.StatSettings.Current.ruinSalvageShare5);
+            Debug.Log($"[Buildings] The ruin of {Definition?.DisplayName} was dug away.", this);
             ReleaseAll();
             Remove();
         }
@@ -701,7 +882,9 @@ namespace KingOfNothing.World.Buildings
                          : info.villagersCanEnter;
             if (!allowed) { reason = $"{role}s cannot enter"; return false; }
             if (occupants.Contains(unit)) { reason = "Already inside"; return false; }
-            if (Capacity > 0 && OccupantCount >= Capacity) { reason = $"Full ({OccupantCount}/{Capacity})"; return false; }
+            if (info.IsMine && unit.Villager != null && !unit.Villager.Stats.CanDo(KingOfNothing.Characters.StatType.Mining)) { reason = "Cannot mine (mining 0)"; return false; }
+            int capacity = Info.capacity < 0 ? -1 : (Type == BuildingType.Tower ? 1 : Info.capacity + MineCapacityBonus(unit));
+            if (capacity > 0 && OccupantCount >= capacity) { reason = $"Full ({OccupantCount}/{capacity})"; return false; }
             return true;
         }
 
@@ -723,6 +906,7 @@ namespace KingOfNothing.World.Buildings
                 return;
             }
             if (!occupants.Remove(unit)) return;
+            mineTimers.Remove(unit);
             unit.LeaveHost(ExitPoint());
             AnyChanged?.Invoke(this);
         }
@@ -806,6 +990,11 @@ namespace KingOfNothing.World.Buildings
         public float RangeMultiplierFor(Unit unit) =>
             unit != null && unit == percher && IsUsefulArcher(unit) && Info != null ? Info.archerRangeMultiplier : 1f;
 
+        /// <summary>Eagle Eye (Archery 20): extra cells of range on top of a tower.</summary>
+        public float RangeBonusFor(Unit unit) =>
+            unit != null && unit == percher && IsUsefulArcher(unit) && unit.Villager.Stats.Has(StatType.Archery, 20)
+                ? KingOfNothing.Characters.StatSettings.Current.eagleRangeBonus20 : 0f;
+
         /// <summary>Archery points the archer on top got from the tower so far.</summary>
         public int ArcheryBonus => archeryApplied;
 
@@ -819,7 +1008,7 @@ namespace KingOfNothing.World.Buildings
         void RemoveTowerBonus(Unit unit)
         {
             if (unit != null && unit.Villager != null && archeryApplied != 0)
-                unit.Villager.Stats.Add(StatType.Archery, -archeryApplied);
+                unit.Villager.Stats.SetBonus(StatType.Archery, 0);
             archeryApplied = 0;
             if (!towerBonus || Definition == null) return;
             towerBonus = false;
@@ -835,11 +1024,9 @@ namespace KingOfNothing.World.Buildings
             int steps = Mathf.FloorToInt((Time.time - perchSince) / Mathf.Max(1f, Info.archeryBonusInterval));
             int wanted = Mathf.Min(Info.archeryBonusMax, steps * Info.archeryBonusPerStep);
             if (wanted <= archeryApplied) return;
-            var stats = percher.Villager.Stats;
-            int before = stats.Get(StatType.Archery);
-            stats.Add(StatType.Archery, wanted - archeryApplied);
-            int gained = stats.Get(StatType.Archery) - before;
-            archeryApplied = gained == 0 ? wanted : archeryApplied + gained; // stat already at its maximum
+            // A temporary bonus: it counts for the level effects (accuracy, range, speed), not for milestones or XP
+            archeryApplied = wanted;
+            percher.Villager.Stats.SetBonus(StatType.Archery, archeryApplied);
             AnyChanged?.Invoke(this);
         }
 
@@ -852,17 +1039,26 @@ namespace KingOfNothing.World.Buildings
         {
             var info = Info;
             if (info == null || !info.HasInventory || item == null) return false;
-            if (info.IsFurnace) return item == info.furnaceInputA || item == info.furnaceInputB;
+            if (info.IsFurnace)
+            {
+                foreach (var r in info.Recipes)
+                {
+                    if (r.output == item) return true;
+                    foreach (var i in r.inputs) if (i != null && i.item == item) return true;
+                }
+                return false;
+            }
             return true;
         }
 
         /// <summary>
         /// Stores items (only in usable buildings) or delivers materials to a template. Returns how many were taken.
         /// </summary>
-        public int Stock(SpawnableDefinition item, int amount)
+        public int Stock(SpawnableDefinition item, int amount, KingOfNothing.Characters.Villager supplier = null)
         {
             if (RequiresMaterials)
             {
+                if (supplier != null) NoteSupplier(supplier);
                 int take = Mathf.Min(amount, Missing(item));
                 if (take <= 0) return 0;
                 string before = SaveState();
@@ -875,7 +1071,83 @@ namespace KingOfNothing.World.Buildings
                 return take;
             }
             if (!IsUsable || !AcceptsItem(item)) return 0;
-            return inventory.Add(item, amount);
+            int added = inventory.Add(item, amount);
+            if (added > 0) FulfilRequest(item, added);
+            return added;
+        }
+
+        /// <summary>
+        /// A character delivers to this template: the best supplier's efficiency lowers the needs (Thrifty Master
+        /// adds 10%), and Master's Secret (Efficiency 20) makes the most expensive material of every 5th template free.
+        /// </summary>
+        void NoteSupplier(KingOfNothing.Characters.Villager supplier)
+        {
+            var stats = supplier.Stats;
+            int level = stats.Base(KingOfNothing.Characters.StatType.Efficiency);
+            bool first = !suppliers.Contains(supplier.Id);
+            bool changed = level > supplierLevel || (!thrifty && stats.Has(KingOfNothing.Characters.StatType.Efficiency, 10)) || first;
+            if (!changed) return;
+            string before = SaveState();
+            supplierLevel = Mathf.Max(supplierLevel, level);
+            if (stats.Has(KingOfNothing.Characters.StatType.Efficiency, 10)) thrifty = true;
+            if (first)
+            {
+                suppliers.Add(supplier.Id);
+                if (stats.Has(KingOfNothing.Characters.StatType.Efficiency, 20) && string.IsNullOrEmpty(freeMaterial))
+                {
+                    supplier.Memory.suppliedTemplates++;
+                    if (supplier.Memory.suppliedTemplates % Mathf.Max(1, KingOfNothing.Characters.StatSettings.Current.freeMaterialEvery20) == 0)
+                    {
+                        DropEntry best = null;
+                        foreach (var c in Info.buildCost) if (c != null && c.item != null && (best == null || c.amount > best.amount)) best = c;
+                        if (best != null)
+                        {
+                            freeMaterial = best.item.name;
+                            supplier.AddJournal($"Master's Secret: {Definition?.DisplayName} needs no {best.item.DisplayName}.");
+                        }
+                    }
+                }
+            }
+            RaiseStateChanged(before);
+            AnyChanged?.Invoke(this);
+        }
+
+        // ------------------------------------------------------------------ delivery requests (training materials)
+
+        /// <summary>Items haulers should bring here (what a training still needs).</summary>
+        public IReadOnlyList<InventorySlot> Requests => requests;
+
+        /// <summary>Asks the haulers to bring items (replaces the earlier request for the item).</summary>
+        public void Request(SpawnableDefinition item, int amount)
+        {
+            if (item == null) return;
+            requests.RemoveAll(r => r.item == item);
+            if (amount > 0) requests.Add(new InventorySlot { item = item, count = amount });
+            RaiseKeptStateChanged();
+            AnyChanged?.Invoke(this);
+        }
+
+        public void ClearRequests()
+        {
+            if (requests.Count == 0) return;
+            requests.Clear();
+            RaiseKeptStateChanged();
+        }
+
+        void FulfilRequest(SpawnableDefinition item, int amount)
+        {
+            var r = requests.Find(x => x.item == item);
+            if (r == null) return;
+            r.count -= amount;
+            if (r.count <= 0) requests.Remove(r);
+            RaiseKeptStateChanged();
+        }
+
+        /// <summary>How many of the item haulers should still bring.</summary>
+        public int Requested(SpawnableDefinition item)
+        {
+            var r = requests.Find(x => x.item == item);
+            return r != null ? Mathf.Min(r.count, inventory.SpaceFor(item)) : 0;
         }
 
         /// <summary>Takes items out. Returns how many were taken.</summary>
@@ -891,7 +1163,10 @@ namespace KingOfNothing.World.Buildings
 
         // ------------------------------------------------------------------ treasury (stores of castle and houses)
 
-        static bool IsStore(Building b) => b != null && b.IsUsable && b.Info != null && b.Info.HasInventory && !b.Info.IsFurnace;
+        static bool IsStore(Building b) => b != null && b.IsUsable && b.Info != null && b.Info.HasInventory && !b.Info.IsFurnace && !b.Info.privateStorage;
+
+        /// <summary>A store of the kingdom (castle, houses): not the furnace, not the training storages.</summary>
+        public bool IsPublicStore => IsStore(this);
 
         /// <summary>True if the kingdom has at least one finished store (castle or house).</summary>
         public static bool AnyStore() => All.Exists(IsStore);
@@ -988,31 +1263,124 @@ namespace KingOfNothing.World.Buildings
 
         // ------------------------------------------------------------------ furnace
 
+        /// <summary>Recipe the furnace works on (-1 = none).</summary>
+        public FurnaceRecipe CurrentRecipe => Info != null && furnaceRecipe >= 0 && furnaceRecipe < Info.Recipes.Count ? Info.Recipes[furnaceRecipe] : null;
+
+        /// <summary>Inputs of a recipe for a baker (Fire Keeper, Baking 5: one wood less).</summary>
+        public static int InputAmount(FurnaceRecipe recipe, DropEntry input, KingOfNothing.Characters.Villager baker)
+        {
+            int amount = input.amount;
+            if (baker != null && input.item != null && input.item.ResourceType == ResourceType.Wood &&
+                baker.Stats.Has(KingOfNothing.Characters.StatType.Baking, 5))
+                amount = Mathf.Max(1, amount - KingOfNothing.Characters.StatSettings.Current.woodSaving5);
+            return amount;
+        }
+
+        /// <summary>Has the furnace everything for one cycle of the recipe (inputs inside, room for the output)?</summary>
+        public bool CanRun(FurnaceRecipe recipe, KingOfNothing.Characters.Villager baker)
+        {
+            if (recipe == null || recipe.output == null || !IsUsable) return false;
+            foreach (var i in recipe.inputs)
+                if (i != null && i.item != null && inventory.Count(i.item) < InputAmount(recipe, i, baker)) return false;
+            return inventory.SpaceFor(OutputFor(recipe, baker)) >= recipe.outputAmount + 1;
+        }
+
+        /// <summary>
+        /// What a cycle makes: cooking bakers with Feast Meal (15) make feast meat, Hearth Master (20) a few master
+        /// meals a day.
+        /// </summary>
+        public SpawnableDefinition OutputFor(FurnaceRecipe recipe, KingOfNothing.Characters.Villager baker)
+        {
+            if (recipe == null) return null;
+            if (!recipe.cooking || baker == null) return recipe.output;
+            var c = KingOfNothing.Characters.CharacterSettings.Current;
+            var stats = baker.Stats;
+            if (stats.Has(KingOfNothing.Characters.StatType.Baking, 20) && c.masterMeat != null)
+            {
+                var m = baker.Memory;
+                if (m.masterMealDay != GameClock.Today) { m.masterMealDay = GameClock.Today; m.masterMealsToday = 0; }
+                if (m.masterMealsToday < KingOfNothing.Characters.StatSettings.Current.masterMealsPerDay) return c.masterMeat;
+            }
+            if (stats.Has(KingOfNothing.Characters.StatType.Baking, 15) && c.feastMeat != null) return c.feastMeat;
+            return recipe.output;
+        }
+
+        /// <summary>
+        /// A baker works the furnace for a frame (called by the baker's job while standing at it). The furnace only
+        /// works with a baker: speed x (0.7 + 0.03 x baking), wood can be saved (1.5% per level), Perfect Cast (10)
+        /// adds a coin now and then, cooking can give an extra portion. Returns true when a cycle was finished.
+        /// </summary>
+        public bool OperateFurnace(int recipeIndex, KingOfNothing.Characters.Villager baker, float deltaTime)
+        {
+            var info = Info;
+            if (info == null || !info.IsFurnace || baker == null) return false;
+            var recipes = info.Recipes;
+            if (recipeIndex < 0 || recipeIndex >= recipes.Count) return false;
+            var recipe = recipes[recipeIndex];
+            if (!CanRun(recipe, baker))
+            {
+                furnaceProgress = 0f;
+                return false;
+            }
+            if (furnaceRecipe != recipeIndex) furnaceProgress = 0f;
+            furnaceRecipe = recipeIndex;
+            furnaceOperatedUntil = Time.time + 0.3f;
+            furnaceProgress += deltaTime * KingOfNothing.Characters.StatEffects.BakingSpeed(baker);
+            if (furnaceProgress < recipe.seconds) return false;
+            furnaceProgress = 0f;
+
+            var s = KingOfNothing.Characters.StatSettings.Current;
+            int level = baker.Stats.Get(KingOfNothing.Characters.StatType.Baking);
+            foreach (var i in recipe.inputs)
+            {
+                if (i == null || i.item == null) continue;
+                int amount = InputAmount(recipe, i, baker);
+                if (i.item.ResourceType == ResourceType.Wood)
+                {
+                    int saved = 0;
+                    for (int n = 0; n < amount; n++) if (UnityEngine.Random.value < s.bakingFuelSavingPerLevel * level) saved++;
+                    amount = Mathf.Max(amount > 0 ? 1 : 0, amount - saved);
+                }
+                inventory.Take(i.item, amount);
+            }
+            var output = OutputFor(recipe, baker);
+            int made = recipe.outputAmount;
+            var coin = Gameplay.goldCoin;
+            if (output == coin && baker.Stats.Has(KingOfNothing.Characters.StatType.Baking, 10) && UnityEngine.Random.value < s.extraCoinChance10) made++;
+            if (recipe.cooking && UnityEngine.Random.value < s.bakingSatietyPerLevel * level) made++;
+            if (output == KingOfNothing.Characters.CharacterSettings.Current.masterMeat && output != null) baker.Memory.masterMealsToday++;
+            inventory.Add(output, made);
+            baker.GainXp(KingOfNothing.Characters.StatType.Baking, s.furnaceCycleXp);
+            return true;
+        }
+
         void UpdateFurnace(float deltaTime)
         {
             var info = Info;
             if (info == null || !info.IsFurnace) return;
-            bool canWork = IsUsable
-                           && info.furnaceInputA != null && inventory.Count(info.furnaceInputA) >= info.furnaceInputAAmount
-                           && info.furnaceInputB != null && inventory.Count(info.furnaceInputB) >= info.furnaceInputBAmount
-                           && inventory.SpaceFor(info.furnaceOutput) >= info.furnaceOutputAmount;
-            furnaceWorking = canWork;
-            if (smoke != null) smoke.Emitting = canWork;
-            if (!canWork)
+            // Works only while a baker operates it
+            bool working = IsUsable && Time.time < furnaceOperatedUntil;
+            furnaceWorking = working;
+            if (smoke != null) smoke.Emitting = working;
+            if (!working && Time.time > furnaceOperatedUntil + 1f) furnaceProgress = 0f;
+        }
+
+        /// <summary>Progress of the current cycle (0..1).</summary>
+        public float FurnaceCycleProgress
+        {
+            get
             {
-                furnaceProgress = 0f;
-                return;
+                var r = CurrentRecipe;
+                return r != null && r.seconds > 0f ? Mathf.Clamp01(furnaceProgress / r.seconds) : 0f;
             }
-            furnaceProgress += deltaTime;
-            if (furnaceProgress < info.furnaceSeconds) return;
-            furnaceProgress = 0f;
-            inventory.Take(info.furnaceInputA, info.furnaceInputAAmount);
-            inventory.Take(info.furnaceInputB, info.furnaceInputBAmount);
-            inventory.Add(info.furnaceOutput, info.furnaceOutputAmount);
         }
 
         // ------------------------------------------------------------------ gold mine
 
+        /// <summary>
+        /// Every miner inside brings a gold out after 125 - 5 x mining seconds (stat table: 120 s at 1, 25 s at 20)
+        /// and learns from it; Reserve Keeper (15) leaves the reserve untouched now and then.
+        /// </summary>
         void UpdateMine(float deltaTime)
         {
             var info = Info;
@@ -1023,19 +1391,62 @@ namespace KingOfNothing.World.Buildings
                 ReleaseAll();
                 return;
             }
-            mineTimer += deltaTime * occupants.Count;
-            float interval = Mathf.Max(0.1f, info.mineInterval);
-            while (mineTimer >= interval && !MineExhausted)
+            var s = KingOfNothing.Characters.StatSettings.Current;
+            foreach (var miner in occupants)
             {
-                mineTimer -= interval;
-                if (info.mineReserve > 0)
+                if (miner == null || MineExhausted) continue;
+                var v = miner.Villager;
+                mineTimers.TryGetValue(miner, out float timer);
+                timer += deltaTime;
+                float interval = v != null ? KingOfNothing.Characters.StatEffects.MineSeconds(v) : Mathf.Max(0.1f, info.mineInterval);
+                if (timer >= interval)
                 {
-                    string before = SaveState();
-                    mineReserve = MineReserve - 1;
-                    RaiseStateChanged(before);
+                    timer -= interval;
+                    bool keep = v != null && v.Stats.Has(KingOfNothing.Characters.StatType.Mining, 15) && UnityEngine.Random.value < s.reserveKeepChance15;
+                    if (info.mineReserve > 0 && !keep)
+                    {
+                        string before = SaveState();
+                        mineReserve = MineReserve - 1;
+                        RaiseStateChanged(before);
+                    }
+                    DropAtDoor(info.mineOutput, 1);
+                    if (v != null) v.GainXp(KingOfNothing.Characters.StatType.Mining, s.mineGoldXp, false);
                 }
-                DropAtDoor(info.mineOutput, 1);
+                mineTimers[miner] = timer;
             }
+        }
+
+        /// <summary>Seconds until this miner's next gold.</summary>
+        public float MineTimeLeft(Unit miner)
+        {
+            if (miner == null || Info == null || !Info.IsMine) return 0f;
+            mineTimers.TryGetValue(miner, out float timer);
+            float interval = miner.Villager != null ? KingOfNothing.Characters.StatEffects.MineSeconds(miner.Villager) : Info.mineInterval;
+            return Mathf.Max(0f, interval - timer);
+        }
+
+        // ------------------------------------------------------------------ church
+
+        /// <summary>
+        /// Paid healing at the church (also the hospital after an army training): 40 gold coins from the stores for
+        /// 20 health, once a day per character (BuildingDefinition: heal cost / heal amount).
+        /// </summary>
+        public bool TryChurchHeal(KingOfNothing.Characters.Villager villager, out string reason)
+        {
+            reason = null;
+            var info = Info;
+            var coin = Gameplay.goldCoin;
+            if (info == null || Type != BuildingType.Church || !IsUsable) { reason = "Only a finished church heals"; return false; }
+            if (villager == null) { reason = "Nobody to heal"; return false; }
+            var health = villager.Needs.Health;
+            if (health.current >= health.max - 0.5f) { reason = "Healthy"; return false; }
+            if (villager.Memory.healedDay == GameClock.Today) { reason = "Already healed today"; return false; }
+            if (coin == null || TreasuryCount(coin) < info.healCost) { reason = $"Needs {info.healCost} gold coins"; return false; }
+            if (!SpendFromTreasury(coin, info.healCost)) { reason = $"Needs {info.healCost} gold coins"; return false; }
+            villager.Memory.healedDay = GameClock.Today;
+            float healed = villager.Heal(info.healAmount, null);
+            villager.AddJournal($"Healed at the church: +{healed:0} health for {info.healCost} gold coins.");
+            return true;
         }
 
         /// <summary>Puts items on the pile at the door (a new pile when it is full: piles of the item's stack size).</summary>

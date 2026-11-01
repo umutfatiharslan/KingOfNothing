@@ -46,6 +46,8 @@ namespace KingOfNothing.World
         [SerializeField] GameObject prefabOverride;
         [Tooltip("Size of the sprite on the map (gold coin: 0.35, so it fits in a pawn's hand).")]
         [Min(0.05f)] [SerializeField] float visualScale = 1f;
+        [Tooltip("Colour the sprite is tinted with (cooked meat is the raw meat sprite in brown...).")]
+        [SerializeField] Color tint = Color.white;
 
         [Header("Placement")]
         [Tooltip("Cells covered on the map grid (e.g. a gold mine is 3x2).")]
@@ -92,7 +94,17 @@ namespace KingOfNothing.World
         [Tooltip("Trees: what remains after the tree is cut (tree1 -> stump1...).")]
         [SerializeField] SpawnableDefinition stump;
 
+        [Header("Food")]
+        [Tooltip("Satiety one item gives when eaten (0 = not food).")]
+        [Min(0)] [SerializeField] int foodValue;
+        [Tooltip("Raw food (raw meat): only characters with Iron Stomach (Hunger 10) eat it, at 25%.")]
+        [SerializeField] bool rawFood;
+
         public string DisplayName => string.IsNullOrEmpty(displayName) ? name : displayName;
+        public Color Tint => tint;
+        public int FoodValue => foodValue;
+        public bool IsFood => foodValue > 0;
+        public bool IsRawFood => rawFood;
         public WorldObjectKind Kind => kind;
         public Sprite[] Frames => frames;
         public bool Animate => animate;
@@ -139,9 +151,30 @@ namespace KingOfNothing.World
 
         public void EditorSetStump(SpawnableDefinition newStump) => stump = newStump;
 
+        public void EditorSetFood(int value, bool raw)
+        {
+            foodValue = value;
+            rawFood = raw;
+        }
+
+        public void EditorSetTint(Color color) => tint = color;
+
+        public void EditorSetTool(InteractionTool tool) => interactionTool = tool;
+
         public void EditorSetVisualScale(float scale) => visualScale = scale;
 
         public void EditorSetStackSize(int size) => stackSize = Mathf.Max(1, size);
+
+        public void EditorSetMaxHealth(int value) => maxHealth = value;
+
+        /// <summary>Adds a drop unless the item is dropped already (one-off patches of existing assets).</summary>
+        public bool EditorAddDrop(DropEntry drop)
+        {
+            if (drop == null || drop.item == null) return false;
+            foreach (var d in drops) if (d != null && d.item == drop.item) return false;
+            drops.Add(drop);
+            return true;
+        }
 
         public void EditorSetMovable(bool movable) => movableByCharacters = movable;
 

@@ -119,3 +119,115 @@ namespace KingOfNothing.Characters
         }
     }
 }
+
+namespace KingOfNothing.Characters
+{
+    /// <summary>A work type with its priority (1 = first ... 5 = last, 0 = never), like RimWorld's work tab.</summary>
+    [System.Serializable]
+    public class WorkPriority
+    {
+        public StatType stat;
+        [UnityEngine.Range(0, 5)] public int priority = 3;
+    }
+
+    /// <summary>The work types of the Work panel (work stats + healing for priests).</summary>
+    public static class WorkTypes
+    {
+        public static readonly StatType[] All =
+        {
+            StatType.Building, StatType.Woodcutting, StatType.Mining, StatType.Farming, StatType.Hunting,
+            StatType.Fishing, StatType.Baking, StatType.Efficiency, StatType.Healing,
+        };
+
+        /// <summary>What a work type does on its own.</summary>
+        public static string Describe(StatType stat)
+        {
+            switch (stat)
+            {
+                case StatType.Building: return "Builds templates whose materials arrived, repairs damaged settlement buildings.";
+                case StatType.Woodcutting: return "Chops trees and stumps marked for chopping.";
+                case StatType.Mining: return "Mines marked stones and gold stones, works in gold mines.";
+                case StatType.Farming: return "Harvests marked pumpkins, mushrooms and bushes.";
+                case StatType.Hunting: return "Hunts sheep marked for hunting.";
+                case StatType.Fishing: return "Fishing comes later.";
+                case StatType.Baking: return "Runs the furnace: melts gold into coins, cooks meat.";
+                case StatType.Efficiency: return "Hauls: supplies templates, carries loot to the stores, delivers training materials.";
+                case StatType.Healing: return "Priests heal injured characters.";
+                default: return "";
+            }
+        }
+
+        /// <summary>Can this character ever do the work type (role and stat)?</summary>
+        public static bool CanDo(Villager v, StatType stat)
+        {
+            if (v == null) return false;
+            if (stat == StatType.Fishing) return false;
+            if (stat == StatType.Healing) return v.Role == VillagerRole.Priest && v.Stats.CanDo(StatType.Healing);
+            if (!VillagerRoles.IsWorker(v.Role)) return false;
+            return v.Stats.CanDo(stat);
+        }
+    }
+
+    /// <summary>A line of the character's journal.</summary>
+    [System.Serializable]
+    public class JournalEntry
+    {
+        public int day;
+        public int hour;
+        public string text;
+    }
+
+    /// <summary>Training a character does in a school / army house / church (progress is kept in the stat).</summary>
+    [System.Serializable]
+    public class TrainingAssignment
+    {
+        [UnityEngine.Tooltip("Uid of the building (map object id).")]
+        public int buildingUid;
+        public StatType stat;
+        [UnityEngine.Tooltip("The character goes to this training during work hours (and back after meals).")]
+        public bool active;
+        [UnityEngine.Tooltip("Interrupted by a meal: goes straight back afterwards (unless it is sleeping time).")]
+        public bool resumeAfterMeal;
+
+        public void Start(int uid, StatType trainedStat)
+        {
+            buildingUid = uid;
+            stat = trainedStat;
+            active = true;
+            resumeAfterMeal = false;
+        }
+
+        public void Stop()
+        {
+            active = false;
+            resumeAfterMeal = false;
+        }
+    }
+
+    /// <summary>Counters and timers of a character (milestones, buffs, daily limits). Saved with the character.</summary>
+    [System.Serializable]
+    public class VillagerMemory
+    {
+        public int bonusMaxHealth;
+        public int healedDay = -99;
+        public bool secondWindUsed;
+        public int lastStandDay = -99;
+        public int immortalDay = -99;
+        public int firstHitDay = -99;
+        public int shieldDay = -99;
+        public float shieldAmount;
+        public float shieldUntil;
+        public int masterMealDay = -99;
+        public int masterMealsToday;
+        public int masterStat = -1;
+        public float masterUntil;
+        public float feastUntil;
+        public int felledDay = -99;
+        public int felledToday;
+        public string lastFelledTree;
+        public int suppliedTemplates;
+        public int homeUid;
+        public float commandBoostUntil;
+        public bool manualHold;
+    }
+}

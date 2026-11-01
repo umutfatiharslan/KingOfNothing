@@ -20,6 +20,7 @@ MonoBehaviour:
   animationFps: 10
   prefabOverride: {fileID: 0}
   visualScale: 1
+  tint: {r: 1, g: 1, b: 1, a: 1}
   footprint: {x: 1, y: 1}
   groundInset: 0.3
   blocksBuilding: 0
@@ -42,3 +43,5 @@ MonoBehaviour:
   interactionTool: 0
   dataVersion: 2
   stump: {fileID: 0}
+  foodValue: 40
+  rawFood: 0

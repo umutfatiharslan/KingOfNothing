@@ -18,6 +18,15 @@ namespace KingOfNothing.Units
     {
         public abstract string Label { get; }
 
+        /// <summary>Set by CharacterBrain: the job belongs to the daily routine (the player did not order it).</summary>
+        public bool IsRoutine { get; set; }
+
+        /// <summary>What the job works on (other characters look for something else).</summary>
+        public virtual object TargetObject => null;
+
+        /// <summary>Short text for the character list ("Chop Tree 2").</summary>
+        public virtual string Activity => Label;
+
         /// <summary>Called once when the job becomes the current one.</summary>
         public virtual void Begin(Unit unit) { }
 
@@ -45,6 +54,9 @@ namespace KingOfNothing.Units
         [SerializeField] bool logJobs;
 
         readonly Queue<UnitJob> queue = new Queue<UnitJob>();
+
+        /// <summary>(job, state) when a job ends by itself (not when it is cancelled).</summary>
+        public event System.Action<UnitJob, JobState> Finished;
         UnitJob current;
         Unit unit;
 
@@ -58,6 +70,8 @@ namespace KingOfNothing.Units
         public void Assign(UnitJob job, bool append = false)
         {
             if (job == null) return;
+            // An order of the player: the character's routine steps back
+            if (!job.IsRoutine && unit != null && unit.Villager != null && unit.Villager.Brain != null) unit.Villager.Brain.OnPlayerOrder(false);
             if (!append)
             {
                 ClearJobs();
@@ -79,7 +93,7 @@ namespace KingOfNothing.Units
 
         void Update()
         {
-            if (unit == null) return;
+            if (unit == null || unit.IsStunned) return;
             if (current == null)
             {
                 if (queue.Count == 0) return;
@@ -95,6 +109,7 @@ namespace KingOfNothing.Units
             if (logJobs) Debug.Log($"[{name}] {(state == JobState.Done ? "finished" : "gave up")}: {job.Label}", this);
             // The job may have cleared the queue itself (entering a building)
             if (current == job) current = null;
+            Finished?.Invoke(job, state);
         }
 
         void OnDisable() => ClearJobs();

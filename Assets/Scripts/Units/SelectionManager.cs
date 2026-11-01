@@ -50,6 +50,7 @@ namespace KingOfNothing.Units
             // Build menu, building windows and the day counter live next to the selection
             if (GetComponent<BuildMenuController>() == null) gameObject.AddComponent<BuildMenuController>();
             if (GetComponent<BuildingWindows>() == null) gameObject.AddComponent<BuildingWindows>();
+            if (GetComponent<CharacterWindows>() == null) gameObject.AddComponent<CharacterWindows>();
         }
 
         void OnDestroy()
@@ -173,6 +174,13 @@ namespace KingOfNothing.Units
             unit.SetSelected(false);
         }
 
+        /// <summary>Selects only this unit (character list).</summary>
+        public void SelectOnly(Unit unit)
+        {
+            ClearSelection();
+            if (unit != null && !unit.IsHidden) Select(unit);
+        }
+
         public void ClearSelection()
         {
             foreach (var unit in selected)
@@ -206,16 +214,41 @@ namespace KingOfNothing.Units
             }
 
             Vector2 world = cam.ScreenToWorldPoint(screen);
-            // A character on a tower or with loot in its hands has its own menu
+            // Characters and sheep have their own menus
             var clickedUnit = UnitAt(world);
-            if (clickedUnit != null && commands.OpenUnitMenu(clickedUnit, screen)) return;
+            if (clickedUnit != null && commands.OpenUnitMenu(clickedUnit, screen, selected)) return;
+            var sheep = SheepAt(world);
+            if (sheep != null)
+            {
+                commands.OpenSheepMenu(sheep, screen, selected);
+                return;
+            }
             var target = ObjectPicker.Pick(MapData.Instance, world);
-            if (target != null && (selected.Count > 0 || GameModeManager.IsDeveloperMode || target is KingOfNothing.World.Buildings.Building))
+            if (target != null && (selected.Count > 0 || GameModeManager.IsDeveloperMode || target is KingOfNothing.World.Buildings.Building ||
+                                   KingOfNothing.Characters.Designations.For(target) != KingOfNothing.Characters.DesignationType.None))
             {
                 commands.OpenMenu(target, screen, selected);
                 return;
             }
             if (selected.Count > 0) IssueMove(world);
+        }
+
+        static KingOfNothing.Animals.Sheep SheepAt(Vector2 world)
+        {
+            KingOfNothing.Animals.Sheep best = null;
+            float bestDistance = 0.6f;
+            foreach (var s in KingOfNothing.Animals.Sheep.All)
+            {
+                if (s == null) continue;
+                var p = (Vector2)s.transform.position + new Vector2(0f, 0.25f);
+                float d = Vector2.Distance(p, world);
+                if (d < bestDistance)
+                {
+                    bestDistance = d;
+                    best = s;
+                }
+            }
+            return best;
         }
 
         void IssueMove(Vector2 target)
@@ -233,6 +266,7 @@ namespace KingOfNothing.Units
                 selected[i].ClearWorkAnimation(); // plain move: Pawn_Run / Pawn_Idle
                 selected[i].MoveTo(IsWalkable(spot) ? spot : target);
             }
+            PlayerMoved(selected);
         }
 
         /// <summary>Spots evenly along the dragged line (at least the formation spacing apart), like RimWorld.</summary>
@@ -279,6 +313,27 @@ namespace KingOfNothing.Units
                 units[i].ClearWorkAnimation();
                 units[i].MoveTo(formationSpots[i]);
             }
+            PlayerMoved(units);
+        }
+
+        /// <summary>
+        /// A move order of the player: the characters hold their new place (routine paused until "Resume routine" or
+        /// sleeping time). Pathfinder (walk speed 20): a group ordered together walks at its leader's speed (+10%).
+        /// </summary>
+        static void PlayerMoved(IReadOnlyList<Unit> units)
+        {
+            Unit leader = null;
+            foreach (var u in units)
+            {
+                if (u == null) continue;
+                var v = u.Villager;
+                if (v == null) continue;
+                v.Brain?.OnPlayerOrder(true);
+                if (v.Stats.Has(KingOfNothing.Characters.StatType.WalkSpeed, 20) && (leader == null || u.CurrentSpeed > leader.CurrentSpeed)) leader = u;
+            }
+            if (leader == null || units.Count < 2) return;
+            float speed = leader.CurrentSpeed * (1f + KingOfNothing.Characters.StatSettings.Current.leaderBonus20);
+            foreach (var u in units) if (u != null && u.IsMoving) u.SpeedOverride = speed;
         }
 
         void HideFormation()

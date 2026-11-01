@@ -529,6 +529,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1b7dae601d2dce947b72dff25ab17ee8, type: 2}
   - {fileID: 11400000, guid: 64cbfdf0ba3778448b9b1bf67c8e3635, type: 2}
   - {fileID: 11400000, guid: 01d8ab900bd0c4d4391899771f423d96, type: 2}
+  - {fileID: 11400000, guid: 38a864700ff49d443b840f67fbc33d83, type: 2}
+  - {fileID: 11400000, guid: 1ac632fa3ec2b0a45b68872ffb6d0fbd, type: 2}
+  - {fileID: 11400000, guid: 3f35d15a852fe164cb029cd7aee60be1, type: 2}
+  - {fileID: 11400000, guid: 98e63005b16a3694a9f19447728c3974, type: 2}
+  - {fileID: 11400000, guid: 787916a446844144296f7ba7c63444f4, type: 2}
+  - {fileID: 11400000, guid: c1ffdb9aea6b0df4185493308e15d11e, type: 2}
   startArea:
     clearRadius: 5
     minDistanceToWater: 8

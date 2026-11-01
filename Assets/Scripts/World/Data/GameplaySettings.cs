@@ -96,6 +96,12 @@ namespace KingOfNothing.World
         [Tooltip("Game hours a missed arrow stays on the ground (1 game hour = 1/24 of a day).")]
         [Min(0f)] public float stuckArrowGameHours = 3f;
 
+        [Header("Characters")]
+        [Tooltip("Experience, level effects, milestones and trainings (Assets/Data/Characters/StatSettings).")]
+        public KingOfNothing.Characters.StatSettings stats;
+        [Tooltip("Avatars, starting stats, needs, day plan, routine, sheep (Assets/Data/Characters/CharacterSettings).")]
+        public KingOfNothing.Characters.CharacterSettings characters;
+
         [Header("Game over")]
         [Tooltip("Stop the game (time scale 0) when the castle falls.")]
         public bool pauseOnGameOver = true;

@@ -222,6 +222,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2729dcb66bd9ee74181553a014ea2932, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KingOfNothing.Characters.Villager
+  id: 
   identity:
     displayName: Villager
     age: 20
@@ -246,6 +247,36 @@ MonoBehaviour:
       current: 100
       changePerSecond: 0
   traits: []
+  schedule: 
+  priorities: []
+  journal: []
+  memory:
+    bonusMaxHealth: 0
+    healedDay: -99
+    secondWindUsed: 0
+    lastStandDay: -99
+    immortalDay: -99
+    firstHitDay: -99
+    shieldDay: -99
+    shieldAmount: 0
+    shieldUntil: 0
+    masterMealDay: -99
+    masterMealsToday: 0
+    masterStat: -1
+    masterUntil: 0
+    feastUntil: 0
+    felledDay: -99
+    felledToday: 0
+    lastFelledTree: 
+    suppliedTemplates: 0
+    homeUid: 0
+    commandBoostUntil: 0
+    manualHold: 0
+  training:
+    buildingUid: 0
+    stat: 0
+    active: 0
+    resumeAfterMeal: 0
   showNameTag: 1
   nameTagOffset: {x: 0, y: 1.35, z: 0}
   nameTagCharacterSize: 0.08

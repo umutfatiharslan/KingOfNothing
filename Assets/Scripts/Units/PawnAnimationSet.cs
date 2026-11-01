@@ -55,6 +55,9 @@ namespace KingOfNothing.Units
         [Header("Tools (walking to / working on an object)")]
         public List<ToolAnimations> tools = new List<ToolAnimations>();
 
+        [Header("Guard (blocking a hit)")]
+        public Sprite[] guard = new Sprite[0];
+
         [Header("Carrying")]
         public Sprite[] idleWood = new Sprite[0];
         public Sprite[] runWood = new Sprite[0];
